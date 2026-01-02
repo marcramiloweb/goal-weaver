@@ -292,6 +292,7 @@ export type Database = {
           banner_url: string | null
           bio: string | null
           created_at: string | null
+          email: string | null
           id: string
           name: string | null
           notification_mode: string | null
@@ -304,6 +305,7 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
+          email?: string | null
           id: string
           name?: string | null
           notification_mode?: string | null
@@ -316,6 +318,7 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
           name?: string | null
           notification_mode?: string | null
