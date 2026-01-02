@@ -335,6 +335,7 @@ export const useSocial = () => {
 
     const isCreator = challenge.creator_id === user.id;
     const updateField = isCreator ? 'creator_progress' : 'opponent_progress';
+    const currentProgress = isCreator ? challenge.creator_progress : challenge.opponent_progress;
 
     // Calculate new progress values
     const newCreatorProgress = isCreator ? progress : challenge.creator_progress;
@@ -342,18 +343,27 @@ export const useSocial = () => {
 
     const updates: Record<string, any> = { [updateField]: progress };
     
+    // Check completion states - before and after
+    const wasCompleted = currentProgress >= challenge.target_value;
+    const isNowCompleted = progress >= challenge.target_value;
+    
     // Check if BOTH players have reached the target - then the challenge is complete
     const creatorCompleted = newCreatorProgress >= challenge.target_value;
     const opponentCompleted = newOpponentProgress >= challenge.target_value;
+    const wasFullyCompleted = challenge.status === 'completed';
+    const isNowFullyCompleted = creatorCompleted && opponentCompleted;
     
-    if (creatorCompleted && opponentCompleted) {
+    if (isNowFullyCompleted && !wasFullyCompleted) {
       // Both completed - challenge is done, both win!
       updates.status = 'completed';
       updates.winner_id = null; // null means both won
       toast({ title: '🎉 ¡Desafío completado!', description: '¡Ambos habéis ganado!' });
-    } else if (progress >= challenge.target_value) {
-      // Current user completed their part
+    } else if (isNowCompleted && !wasCompleted) {
+      // Current user just completed their part
       toast({ title: '✅ ¡Meta alcanzada!', description: 'Esperando a que tu amigo complete su parte' });
+    } else if (wasCompleted && !isNowCompleted) {
+      // User "uncompleted" their part
+      toast({ title: 'Progreso actualizado', description: 'Has desmarcado tu meta' });
     }
 
     const { error } = await supabase
@@ -363,13 +373,22 @@ export const useSocial = () => {
 
     if (!error) {
       await fetchChallenges();
-      // Add points when completing your part
-      if (progress >= challenge.target_value) {
+      
+      // Points logic: only change points when completion state changes
+      if (!wasCompleted && isNowCompleted) {
+        // Just completed my part - add 25 points
         await addPoints(25);
+      } else if (wasCompleted && !isNowCompleted) {
+        // Uncompleted my part - remove 25 points
+        await addPoints(-25);
       }
-      // Bonus points when both complete
-      if (creatorCompleted && opponentCompleted) {
+      
+      // Bonus for full challenge completion
+      if (!wasFullyCompleted && isNowFullyCompleted) {
         await addPoints(25);
+      } else if (wasFullyCompleted && !isNowFullyCompleted) {
+        // Challenge was uncompleted - remove bonus
+        await addPoints(-25);
       }
     }
     return { error };
@@ -437,11 +456,11 @@ export const useSocial = () => {
   const addPoints = async (points: number) => {
     if (!user || !userPoints) return { error: new Error('No user points') };
 
-    const newTotal = userPoints.total_points + points;
-    const newWeekly = userPoints.weekly_points + points;
+    const newTotal = Math.max(0, userPoints.total_points + points);
+    const newWeekly = Math.max(0, userPoints.weekly_points + points);
     
-    // Calculate new tier
-    let newTier = userPoints.league_tier;
+    // Calculate new tier based on new total
+    let newTier = 'bronze';
     if (newTotal >= 15000) newTier = 'master';
     else if (newTotal >= 5000) newTier = 'diamond';
     else if (newTotal >= 1500) newTier = 'platinum';
