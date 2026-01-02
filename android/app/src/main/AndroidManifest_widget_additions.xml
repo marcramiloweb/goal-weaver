@@ -1,0 +1,35 @@
+<!--
+    INSTRUCCIONES:
+    Añade estos receivers dentro de la etiqueta <application> en tu AndroidManifest.xml
+    ubicado en: android/app/src/main/AndroidManifest.xml
+    
+    Copia el contenido entre los comentarios START y END
+-->
+
+<!-- START - Copiar desde aquí -->
+
+<!-- Widget de Metas Principales -->
+<receiver
+    android:name=".widgets.GoalsWidgetProvider"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/goals_widget_info" />
+</receiver>
+
+<!-- Widget de Tareas de Hoy -->
+<receiver
+    android:name=".widgets.TodayTasksWidgetProvider"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/today_tasks_widget_info" />
+</receiver>
+
+<!-- END - Copiar hasta aquí -->
