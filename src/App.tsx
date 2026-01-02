@@ -11,6 +11,7 @@ import GoalDetail from "./pages/GoalDetail";
 import Progress from "./pages/Progress";
 import Profile from "./pages/Profile";
 import Achievements from "./pages/Achievements";
+import League from "./pages/League";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/goals/:id" element={<GoalDetail />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/achievements" element={<Achievements />} />
+            <Route path="/league" element={<League />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/install" element={<Install />} />
             <Route path="*" element={<NotFound />} />

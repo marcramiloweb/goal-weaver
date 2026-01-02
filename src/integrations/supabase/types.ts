@@ -44,6 +44,60 @@ export type Database = {
         }
         Relationships: []
       }
+      challenges: {
+        Row: {
+          created_at: string
+          creator_id: string
+          creator_progress: number
+          description: string | null
+          end_date: string | null
+          icon: string | null
+          id: string
+          opponent_id: string
+          opponent_progress: number
+          start_date: string | null
+          status: string
+          target_value: number
+          title: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          creator_progress?: number
+          description?: string | null
+          end_date?: string | null
+          icon?: string | null
+          id?: string
+          opponent_id: string
+          opponent_progress?: number
+          start_date?: string | null
+          status?: string
+          target_value?: number
+          title: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          creator_progress?: number
+          description?: string | null
+          end_date?: string | null
+          icon?: string | null
+          id?: string
+          opponent_id?: string
+          opponent_progress?: number
+          start_date?: string | null
+          status?: string
+          target_value?: number
+          title?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       check_ins: {
         Row: {
           created_at: string | null
@@ -81,6 +135,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      friend_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          friend_id: string
+          id: string
+          last_interaction_date: string | null
+          longest_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          friend_id: string
+          id?: string
+          last_interaction_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          friend_id?: string
+          id?: string
+          last_interaction_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       goals: {
         Row: {
@@ -145,32 +259,68 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          banner_url: string | null
+          bio: string | null
           created_at: string | null
           id: string
           name: string | null
           notification_mode: string | null
           timezone: string | null
+          tree_level: number | null
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
           created_at?: string | null
           id: string
           name?: string | null
           notification_mode?: string | null
           timezone?: string | null
+          tree_level?: number | null
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
           created_at?: string | null
           id?: string
           name?: string | null
           notification_mode?: string | null
           timezone?: string | null
+          tree_level?: number | null
           updated_at?: string | null
         }
         Relationships: []
@@ -290,6 +440,72 @@ export type Database = {
           target_type?: string
           target_value?: number
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_points: {
+        Row: {
+          created_at: string
+          id: string
+          league_tier: string
+          rank_position: number | null
+          total_points: number
+          updated_at: string
+          user_id: string
+          weekly_points: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_tier?: string
+          rank_position?: number | null
+          total_points?: number
+          updated_at?: string
+          user_id: string
+          weekly_points?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_tier?: string
+          rank_position?: number | null
+          total_points?: number
+          updated_at?: string
+          user_id?: string
+          weekly_points?: number
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          achievements_display_count: number
+          created_at: string
+          id: string
+          notification_time: string | null
+          notifications_enabled: boolean | null
+          profile_visibility: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achievements_display_count?: number
+          created_at?: string
+          id?: string
+          notification_time?: string | null
+          notifications_enabled?: boolean | null
+          profile_visibility?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achievements_display_count?: number
+          created_at?: string
+          id?: string
+          notification_time?: string | null
+          notifications_enabled?: boolean | null
+          profile_visibility?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

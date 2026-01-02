@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGoals, useTasks, useStreak, useCheckIns } from '@/hooks/useGoals';
+import { useAchievements } from '@/hooks/useAchievements';
+import { useSocial } from '@/hooks/useSocial';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { GoalCard } from '@/components/goals/GoalCard';
 import { TaskItem } from '@/components/goals/TaskItem';
@@ -9,7 +11,12 @@ import { CreateGoalSheet } from '@/components/goals/CreateGoalSheet';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { Confetti } from '@/components/ui/confetti';
 import { Button } from '@/components/ui/button';
-import { Plus, Flame, Sparkles, ChevronRight } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import GrowingTree from '@/components/social/GrowingTree';
+import LeagueCard from '@/components/social/LeagueCard';
+import { AchievementCard } from '@/components/achievements/AchievementCard';
+import { Plus, Flame, Sparkles, ChevronRight, Trophy } from 'lucide-react';
 import { MOTIVATIONAL_QUOTES } from '@/types/goals';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -21,6 +28,8 @@ export const Home: React.FC = () => {
   const { tasks, todayTasks, toggleTask } = useTasks();
   const { streak, updateStreak } = useStreak();
   const { createCheckIn } = useCheckIns();
+  const { achievements } = useAchievements();
+  const { userPoints, leaderboard, preferences, addPoints } = useSocial();
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -49,6 +58,13 @@ export const Home: React.FC = () => {
     return totalProgress / activeGoals.length;
   }, [activeGoals]);
 
+  // Calculate tree level based on achievements
+  const earnedAchievements = achievements.filter(a => a.is_earned);
+  const treeLevel = Math.min(1 + Math.floor(earnedAchievements.length / 2), 10);
+
+  // How many achievements to show
+  const achievementsToShow = preferences?.achievements_display_count || 3;
+
   const handleCheckIn = async (goalId: string) => {
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
@@ -62,10 +78,15 @@ export const Home: React.FC = () => {
     await updateGoal(goalId, { current_value: newValue });
     await createCheckIn(goalId, increment);
     await updateStreak();
+    
+    // Add points for check-in
+    await addPoints(10);
 
     if (newValue >= goal.target_value) {
       setShowConfetti(true);
       await updateGoal(goalId, { status: 'completed' });
+      // Bonus points for completing goal
+      await addPoints(50);
     }
   };
 
@@ -82,7 +103,7 @@ export const Home: React.FC = () => {
     <AppLayout>
       <Confetti active={showConfetti} onComplete={() => setShowConfetti(false)} />
 
-      <div className="px-4 pt-12 pb-6 space-y-6">
+      <div className="px-4 pt-12 pb-24 space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
@@ -107,6 +128,35 @@ export const Home: React.FC = () => {
           <p className="text-sm text-foreground/80 italic">{dailyQuote}</p>
         </div>
 
+        {/* Growing Tree Section */}
+        <Card className="overflow-hidden">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <GrowingTree 
+                level={treeLevel} 
+                achievementsCount={earnedAchievements.length}
+              />
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg">Tu Árbol de Logros</h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Crece con cada meta que alcanzas
+                </p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    <Trophy className="w-3 h-3 mr-1" />
+                    {earnedAchievements.length} logros
+                  </Badge>
+                  {treeLevel === 10 && (
+                    <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500">
+                      ¡Máximo nivel!
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Overall Progress Card */}
         <div className="card-elevated p-5">
           <div className="flex items-center gap-4">
@@ -124,6 +174,42 @@ export const Home: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* League Preview */}
+        <LeagueCard
+          userPoints={userPoints}
+          leaderboard={leaderboard}
+          onViewLeaderboard={() => navigate('/league')}
+        />
+
+        {/* Achievements Preview */}
+        {achievements.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-lg flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-yellow-500" />
+                Logros ({earnedAchievements.length}/{achievements.length})
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/achievements')}
+                className="text-muted-foreground"
+              >
+                Ver todos
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {achievements.slice(0, achievementsToShow).map((achievement) => (
+                <AchievementCard 
+                  key={achievement.id} 
+                  achievement={achievement}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Today's Tasks */}
         <section>

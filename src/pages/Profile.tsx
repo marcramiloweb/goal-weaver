@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGoals, useStreak } from '@/hooks/useGoals';
+import { useSocial } from '@/hooks/useSocial';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { 
   Sheet, 
   SheetContent, 
@@ -23,6 +27,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
   User, 
@@ -34,25 +40,42 @@ import {
   Target,
   Bell,
   ChevronRight,
-  Edit
+  Edit,
+  Camera,
+  Image as ImageIcon,
+  Upload
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { LEAGUE_TIERS } from '@/types/social';
 
 export const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, signOut, updateProfile } = useAuth();
   const { goals, completedGoals } = useGoals();
   const { streak } = useStreak();
+  const { preferences, userPoints, updatePreferences } = useSocial();
   const { toast } = useToast();
 
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [editName, setEditName] = useState(profile?.name || '');
+  const [editBio, setEditBio] = useState('');
   const [saving, setSaving] = useState(false);
+  
+  // Settings state
+  const [achievementsCount, setAchievementsCount] = useState(preferences?.achievements_display_count || 3);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(preferences?.notifications_enabled ?? true);
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const handleSaveProfile = async () => {
     setSaving(true);
-    const { error } = await updateProfile({ name: editName });
+    const { error } = await updateProfile({ 
+      name: editName,
+    });
     setSaving(false);
 
     if (error) {
@@ -70,9 +93,36 @@ export const Profile: React.FC = () => {
     }
   };
 
+  const handleSaveSettings = async () => {
+    setSaving(true);
+    const { error } = await updatePreferences({
+      achievements_display_count: achievementsCount,
+      notifications_enabled: notificationsEnabled,
+    });
+    setSaving(false);
+
+    if (!error) {
+      toast({
+        title: 'Ajustes guardados',
+        description: 'Tus preferencias han sido actualizadas',
+      });
+      setShowSettings(false);
+    }
+  };
+
   const handleLogout = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleImageUpload = async (file: File, type: 'avatar' | 'banner') => {
+    if (!user) return;
+    
+    // For now, just show a message that storage needs to be set up
+    toast({
+      title: 'Próximamente',
+      description: 'La subida de imágenes estará disponible pronto',
+    });
   };
 
   // Simple achievements/badges based on data
@@ -115,125 +165,210 @@ export const Profile: React.FC = () => {
   ];
 
   const earnedBadges = achievements.filter(a => a.earned);
+  const tier = userPoints ? LEAGUE_TIERS[userPoints.league_tier] : LEAGUE_TIERS.bronze;
 
   return (
     <AppLayout>
-      <div className="px-4 pt-12 pb-6 space-y-6">
-        {/* Header */}
-        <div className="text-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent mx-auto flex items-center justify-center text-4xl mb-4 shadow-glow">
-            {profile?.name?.charAt(0)?.toUpperCase() || '👤'}
-          </div>
-          <h1 className="text-2xl font-bold">
-            {profile?.name || 'Tu perfil'}
-          </h1>
-          <p className="text-muted-foreground">{user?.email}</p>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-2"
-            onClick={() => {
-              setEditName(profile?.name || '');
-              setShowEditProfile(true);
-            }}
+      <div className="pb-24">
+        {/* Banner */}
+        <div 
+          className="h-32 bg-gradient-to-br from-primary/30 via-accent/20 to-secondary/30 relative"
+        >
+          <button
+            className="absolute bottom-2 right-2 p-2 bg-background/80 rounded-full"
+            onClick={() => bannerInputRef.current?.click()}
           >
-            <Edit className="h-4 w-4 mr-1" />
-            Editar perfil
-          </Button>
+            <Camera className="w-4 h-4" />
+          </button>
+          <input
+            type="file"
+            ref={bannerInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImageUpload(file, 'banner');
+            }}
+          />
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="card-elevated border-0">
-            <CardContent className="p-4 text-center">
-              <Target className="h-5 w-5 mx-auto text-primary mb-1" />
-              <div className="text-xl font-bold">{goals.length}</div>
-              <p className="text-xs text-muted-foreground">Metas</p>
-            </CardContent>
-          </Card>
-
-          <Card className="card-elevated border-0">
-            <CardContent className="p-4 text-center">
-              <Trophy className="h-5 w-5 mx-auto text-accent mb-1" />
-              <div className="text-xl font-bold">{completedGoals.length}</div>
-              <p className="text-xs text-muted-foreground">Logradas</p>
-            </CardContent>
-          </Card>
-
-          <Card className="card-elevated border-0">
-            <CardContent className="p-4 text-center">
-              <Flame className="h-5 w-5 mx-auto text-accent mb-1" />
-              <div className="text-xl font-bold">{streak.longest}</div>
-              <p className="text-xs text-muted-foreground">Mejor racha</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Achievements */}
-        <section>
-          <h2 className="font-semibold text-lg mb-3">
-            Logros ({earnedBadges.length}/{achievements.length})
-          </h2>
-          <div className="grid grid-cols-5 gap-2">
-            {achievements.map((achievement) => (
-              <div
-                key={achievement.id}
-                className={cn(
-                  'aspect-square rounded-xl flex items-center justify-center text-2xl transition-all',
-                  achievement.earned 
-                    ? 'bg-accent/20 shadow-sm' 
-                    : 'bg-muted/50 opacity-40 grayscale'
-                )}
-                title={achievement.name}
-              >
-                {achievement.icon}
-              </div>
-            ))}
+        {/* Avatar */}
+        <div className="px-4 -mt-12 relative z-10">
+          <div className="relative inline-block">
+            <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
+              <AvatarImage src={profile?.avatar_url || undefined} />
+              <AvatarFallback className="text-3xl bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                {profile?.name?.charAt(0)?.toUpperCase() || '👤'}
+              </AvatarFallback>
+            </Avatar>
+            <button
+              className="absolute bottom-0 right-0 p-2 bg-primary rounded-full text-primary-foreground shadow-lg"
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+            <input
+              type="file"
+              ref={avatarInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImageUpload(file, 'avatar');
+              }}
+            />
           </div>
-          {earnedBadges.length > 0 && (
-            <div className="mt-3 p-3 bg-muted/30 rounded-xl">
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {earnedBadges[earnedBadges.length - 1].name}:
-                </span>{' '}
-                {earnedBadges[earnedBadges.length - 1].description}
-              </p>
-            </div>
-          )}
-        </section>
+        </div>
 
-        {/* Settings */}
-        <section>
-          <h2 className="font-semibold text-lg mb-3">Ajustes</h2>
-          <div className="space-y-2">
-            <button 
-              className="w-full flex items-center gap-3 p-4 bg-card rounded-xl hover:bg-muted/50 transition-colors"
+        <div className="px-4 pt-3 space-y-6">
+          {/* User Info */}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">
+                {profile?.name || 'Tu perfil'}
+              </h1>
+              {userPoints && (
+                <Badge 
+                  style={{ 
+                    backgroundColor: tier.color + '20',
+                    color: tier.color 
+                  }}
+                >
+                  {tier.icon} {tier.name}
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground">{user?.email}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
               onClick={() => {
-                toast({
-                  title: 'Próximamente',
-                  description: 'Las notificaciones estarán disponibles pronto',
-                });
+                setEditName(profile?.name || '');
+                setShowEditProfile(true);
               }}
             >
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="flex-1 text-left">Notificaciones</span>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </button>
-
-            <button 
-              className="w-full flex items-center gap-3 p-4 bg-card rounded-xl hover:bg-muted/50 transition-colors text-destructive"
-              onClick={() => setShowLogoutConfirm(true)}
-            >
-              <LogOut className="h-5 w-5" />
-              <span className="flex-1 text-left">Cerrar sesión</span>
-            </button>
+              <Edit className="h-4 w-4 mr-1" />
+              Editar perfil
+            </Button>
           </div>
-        </section>
 
-        {/* App Info */}
-        <div className="text-center text-sm text-muted-foreground pt-4">
-          <p>Propósitos 2026 v1.0</p>
-          <p className="mt-1">Hecho con ❤️ para ayudarte a lograr tus metas</p>
+          {/* Stats */}
+          <div className="grid grid-cols-4 gap-2">
+            <Card className="card-elevated border-0">
+              <CardContent className="p-3 text-center">
+                <Target className="h-4 w-4 mx-auto text-primary mb-1" />
+                <div className="text-lg font-bold">{goals.length}</div>
+                <p className="text-xs text-muted-foreground">Metas</p>
+              </CardContent>
+            </Card>
+
+            <Card className="card-elevated border-0">
+              <CardContent className="p-3 text-center">
+                <Trophy className="h-4 w-4 mx-auto text-accent mb-1" />
+                <div className="text-lg font-bold">{completedGoals.length}</div>
+                <p className="text-xs text-muted-foreground">Logradas</p>
+              </CardContent>
+            </Card>
+
+            <Card className="card-elevated border-0">
+              <CardContent className="p-3 text-center">
+                <Flame className="h-4 w-4 mx-auto text-orange-500 mb-1" />
+                <div className="text-lg font-bold">{streak.longest}</div>
+                <p className="text-xs text-muted-foreground">Mejor racha</p>
+              </CardContent>
+            </Card>
+
+            <Card className="card-elevated border-0">
+              <CardContent className="p-3 text-center">
+                <span className="text-sm">{tier.icon}</span>
+                <div className="text-lg font-bold">{userPoints?.total_points || 0}</div>
+                <p className="text-xs text-muted-foreground">Puntos</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Achievements */}
+          <section>
+            <h2 className="font-semibold text-lg mb-3">
+              Logros ({earnedBadges.length}/{achievements.length})
+            </h2>
+            <div className="grid grid-cols-5 gap-2">
+              {achievements.map((achievement) => (
+                <div
+                  key={achievement.id}
+                  className={cn(
+                    'aspect-square rounded-xl flex items-center justify-center text-2xl transition-all',
+                    achievement.earned 
+                      ? 'bg-accent/20 shadow-sm' 
+                      : 'bg-muted/50 opacity-40 grayscale'
+                  )}
+                  title={achievement.name}
+                >
+                  {achievement.icon}
+                </div>
+              ))}
+            </div>
+            {earnedBadges.length > 0 && (
+              <div className="mt-3 p-3 bg-muted/30 rounded-xl">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {earnedBadges[earnedBadges.length - 1].name}:
+                  </span>{' '}
+                  {earnedBadges[earnedBadges.length - 1].description}
+                </p>
+              </div>
+            )}
+          </section>
+
+          {/* Settings */}
+          <section>
+            <h2 className="font-semibold text-lg mb-3">Ajustes</h2>
+            <div className="space-y-2">
+              <button 
+                className="w-full flex items-center gap-3 p-4 bg-card rounded-xl hover:bg-muted/50 transition-colors"
+                onClick={() => setShowSettings(true)}
+              >
+                <Settings className="h-5 w-5 text-muted-foreground" />
+                <span className="flex-1 text-left">Preferencias</span>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </button>
+
+              <button 
+                className="w-full flex items-center gap-3 p-4 bg-card rounded-xl hover:bg-muted/50 transition-colors"
+                onClick={() => {
+                  if ('Notification' in window) {
+                    Notification.requestPermission().then(permission => {
+                      if (permission === 'granted') {
+                        toast({
+                          title: 'Notificaciones activadas',
+                          description: 'Recibirás recordatorios de tus metas',
+                        });
+                      }
+                    });
+                  }
+                }}
+              >
+                <Bell className="h-5 w-5 text-muted-foreground" />
+                <span className="flex-1 text-left">Activar notificaciones</span>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </button>
+
+              <button 
+                className="w-full flex items-center gap-3 p-4 bg-card rounded-xl hover:bg-muted/50 transition-colors text-destructive"
+                onClick={() => setShowLogoutConfirm(true)}
+              >
+                <LogOut className="h-5 w-5" />
+                <span className="flex-1 text-left">Cerrar sesión</span>
+              </button>
+            </div>
+          </section>
+
+          {/* App Info */}
+          <div className="text-center text-sm text-muted-foreground pt-4">
+            <p>Propósitos 2026 v1.0</p>
+            <p className="mt-1">Hecho con ❤️ para ayudarte a lograr tus metas</p>
+          </div>
         </div>
       </div>
 
@@ -254,12 +389,69 @@ export const Profile: React.FC = () => {
                 className="mt-1"
               />
             </div>
+            <div>
+              <Label htmlFor="bio">Bio (opcional)</Label>
+              <Textarea
+                id="bio"
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                placeholder="Cuéntanos sobre ti..."
+                className="mt-1"
+                rows={3}
+              />
+            </div>
             <Button 
               className="w-full" 
               onClick={handleSaveProfile}
               disabled={saving}
             >
               {saving ? 'Guardando...' : 'Guardar cambios'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Settings Sheet */}
+      <Sheet open={showSettings} onOpenChange={setShowSettings}>
+        <SheetContent side="bottom" className="rounded-t-3xl">
+          <SheetHeader>
+            <SheetTitle>Preferencias</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-6">
+            <div>
+              <Label>Logros a mostrar en inicio: {achievementsCount}</Label>
+              <Slider
+                value={[achievementsCount]}
+                onValueChange={([v]) => setAchievementsCount(v)}
+                min={1}
+                max={10}
+                step={1}
+                className="mt-3"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Número de logros visibles en la página principal
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Notificaciones</Label>
+                <p className="text-xs text-muted-foreground">
+                  Recibir recordatorios de metas
+                </p>
+              </div>
+              <Switch
+                checked={notificationsEnabled}
+                onCheckedChange={setNotificationsEnabled}
+              />
+            </div>
+
+            <Button 
+              className="w-full" 
+              onClick={handleSaveSettings}
+              disabled={saving}
+            >
+              {saving ? 'Guardando...' : 'Guardar preferencias'}
             </Button>
           </div>
         </SheetContent>
