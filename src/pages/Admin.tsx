@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAdmin, useAdminData } from '@/hooks/useAdmin';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,16 +49,32 @@ import {
   Search,
   TrendingUp,
   Pencil,
-  Save
+  Save,
+  UserCheck,
+  UserX,
+  Eye,
+  X,
+  UserPlus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 
+interface Friendship {
+  id: string;
+  requester_id: string;
+  addressee_id: string;
+  status: string;
+  created_at: string;
+  requester?: { name: string; email: string };
+  addressee?: { name: string; email: string };
+}
+
 export const Admin: React.FC = () => {
   const { isAdmin, loading: adminLoading } = useAdmin();
   const { users, allGoals, loading, deleteUser, deleteGoal, refresh } = useAdminData();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [searchUsers, setSearchUsers] = useState('');
   const [searchGoals, setSearchGoals] = useState('');
@@ -70,6 +86,51 @@ export const Admin: React.FC = () => {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [editingGoal, setEditingGoal] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+
+  // Proxy state
+  const [proxyUser, setProxyUser] = useState<any>(null);
+  const [proxySheetOpen, setProxySheetOpen] = useState(false);
+
+  // Friendships state
+  const [friendships, setFriendships] = useState<Friendship[]>([]);
+  const [loadingFriendships, setLoadingFriendships] = useState(false);
+
+  // Fetch friendships
+  const fetchFriendships = async () => {
+    setLoadingFriendships(true);
+    const { data } = await supabase
+      .from('friendships')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      // Get all unique user IDs
+      const userIds = [...new Set(data.flatMap(f => [f.requester_id, f.addressee_id]))];
+      
+      // Fetch profiles for these users
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .in('id', userIds);
+
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      const enrichedFriendships = data.map(f => ({
+        ...f,
+        requester: profilesMap.get(f.requester_id) || { name: 'Desconocido', email: '' },
+        addressee: profilesMap.get(f.addressee_id) || { name: 'Desconocido', email: '' },
+      }));
+
+      setFriendships(enrichedFriendships);
+    }
+    setLoadingFriendships(false);
+  };
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchFriendships();
+    }
+  }, [isAdmin]);
 
   if (adminLoading) {
     return (
@@ -94,6 +155,9 @@ export const Admin: React.FC = () => {
     g.title?.toLowerCase().includes(searchGoals.toLowerCase()) ||
     g.profiles?.name?.toLowerCase().includes(searchGoals.toLowerCase())
   );
+
+  const pendingFriendships = friendships.filter(f => f.status === 'pending');
+  const acceptedFriendships = friendships.filter(f => f.status === 'accepted');
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
@@ -124,6 +188,11 @@ export const Admin: React.FC = () => {
   const handleEditGoal = (goal: any) => {
     setEditingGoal({ ...goal });
     setEditGoalOpen(true);
+  };
+
+  const handleProxyUser = (user: any) => {
+    setProxyUser(user);
+    setProxySheetOpen(true);
   };
 
   const saveUser = async () => {
@@ -176,6 +245,49 @@ export const Admin: React.FC = () => {
     }
   };
 
+  // Friendship actions
+  const acceptFriendship = async (id: string) => {
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'accepted' })
+      .eq('id', id);
+
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo aceptar', variant: 'destructive' });
+    } else {
+      toast({ title: 'Solicitud aceptada' });
+      fetchFriendships();
+    }
+  };
+
+  const rejectFriendship = async (id: string) => {
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'rejected' })
+      .eq('id', id);
+
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo rechazar', variant: 'destructive' });
+    } else {
+      toast({ title: 'Solicitud rechazada' });
+      fetchFriendships();
+    }
+  };
+
+  const deleteFriendship = async (id: string) => {
+    const { error } = await supabase
+      .from('friendships')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
+    } else {
+      toast({ title: 'Amistad eliminada' });
+      fetchFriendships();
+    }
+  };
+
   const totalGoals = allGoals.length;
   const completedGoals = allGoals.filter(g => g.status === 'completed').length;
   const activeUsers = users.filter(u => u.goals_count > 0).length;
@@ -196,14 +308,17 @@ export const Admin: React.FC = () => {
             variant="outline" 
             size="icon" 
             className="ml-auto"
-            onClick={() => refresh()}
+            onClick={() => {
+              refresh();
+              fetchFriendships();
+            }}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           <Card>
             <CardContent className="p-4 text-center">
               <Users className="h-5 w-5 mx-auto text-primary mb-1" />
@@ -225,18 +340,29 @@ export const Admin: React.FC = () => {
               <p className="text-xs text-muted-foreground">Activos</p>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <UserPlus className="h-5 w-5 mx-auto text-orange-500 mb-1" />
+              <div className="text-2xl font-bold">{pendingFriendships.length}</div>
+              <p className="text-xs text-muted-foreground">Pendientes</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="users">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
-              Usuarios ({users.length})
+              Usuarios
             </TabsTrigger>
             <TabsTrigger value="goals">
               <Target className="h-4 w-4 mr-2" />
-              Metas ({totalGoals})
+              Metas
+            </TabsTrigger>
+            <TabsTrigger value="friendships">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Solicitudes
             </TabsTrigger>
           </TabsList>
 
@@ -276,6 +402,14 @@ export const Admin: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleProxyUser(user)}
+                            title="Ver como usuario"
+                          >
+                            <Eye className="h-4 w-4 text-blue-500" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -388,6 +522,115 @@ export const Admin: React.FC = () => {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="friendships" className="mt-4 space-y-6">
+            {/* Pending Requests */}
+            <div>
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-orange-500" />
+                Solicitudes Pendientes ({pendingFriendships.length})
+              </h3>
+              {pendingFriendships.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    No hay solicitudes pendientes
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2">
+                  {pendingFriendships.map((friendship) => (
+                    <Card key={friendship.id}>
+                      <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm">
+                            <span className="font-medium">{friendship.requester?.name}</span>
+                            <span className="text-muted-foreground"> → </span>
+                            <span className="font-medium">{friendship.addressee?.name}</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(friendship.created_at), 'dd MMM yyyy HH:mm', { locale: es })}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-green-600 border-green-600 hover:bg-green-50"
+                            onClick={() => acceptFriendship(friendship.id)}
+                          >
+                            <UserCheck className="h-4 w-4 mr-1" />
+                            Aceptar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 border-red-600 hover:bg-red-50"
+                            onClick={() => rejectFriendship(friendship.id)}
+                          >
+                            <UserX className="h-4 w-4 mr-1" />
+                            Rechazar
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Accepted Friendships */}
+            <div>
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-green-500" />
+                Amistades Activas ({acceptedFriendships.length})
+              </h3>
+              {acceptedFriendships.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    No hay amistades activas
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="rounded-xl border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Usuario 1</TableHead>
+                        <TableHead>Usuario 2</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Acción</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {acceptedFriendships.map((friendship) => (
+                        <TableRow key={friendship.id}>
+                          <TableCell className="font-medium">
+                            {friendship.requester?.name}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {friendship.addressee?.name}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {format(new Date(friendship.created_at), 'dd MMM yyyy', { locale: es })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => deleteFriendship(friendship.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
@@ -553,6 +796,96 @@ export const Admin: React.FC = () => {
                 {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                 Guardar cambios
               </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Proxy User Sheet */}
+      <Sheet open={proxySheetOpen} onOpenChange={setProxySheetOpen}>
+        <SheetContent className="sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-blue-500" />
+              Ver como Usuario
+            </SheetTitle>
+          </SheetHeader>
+          {proxyUser && (
+            <div className="mt-6 space-y-6">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-xl">{proxyUser.name?.[0]?.toUpperCase() || '?'}</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold">{proxyUser.name || 'Sin nombre'}</p>
+                      <p className="text-sm text-muted-foreground">{proxyUser.email}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-muted-foreground">Estadísticas del Usuario</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <Card>
+                    <CardContent className="p-3 text-center">
+                      <div className="text-2xl font-bold text-primary">{proxyUser.goals_count}</div>
+                      <p className="text-xs text-muted-foreground">Total Metas</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-3 text-center">
+                      <div className="text-2xl font-bold text-green-500">{proxyUser.completed_count}</div>
+                      <p className="text-xs text-muted-foreground">Completadas</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-muted-foreground">Metas del Usuario</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {allGoals
+                    .filter(g => g.user_id === proxyUser.id)
+                    .map((goal) => (
+                      <Card key={goal.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEditGoal(goal)}>
+                        <CardContent className="p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>{goal.icon}</span>
+                            <span className="font-medium text-sm">{goal.title}</span>
+                          </div>
+                          <Badge 
+                            variant={goal.status === 'completed' ? 'default' : 'secondary'}
+                            className={goal.status === 'completed' ? 'bg-green-500' : ''}
+                          >
+                            {goal.status === 'completed' ? '✓' : goal.status}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  {allGoals.filter(g => g.user_id === proxyUser.id).length === 0 && (
+                    <p className="text-center text-muted-foreground py-4">
+                      Este usuario no tiene metas
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => {
+                    setProxySheetOpen(false);
+                    handleEditUser(proxyUser);
+                  }}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Editar Perfil
+                </Button>
+              </div>
             </div>
           )}
         </SheetContent>
