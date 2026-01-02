@@ -26,8 +26,9 @@ export const useSocial = () => {
 
   const fetchAll = async () => {
     setLoading(true);
+    // Fetch friends first since leaderboard depends on it
+    await fetchFriends();
     await Promise.all([
-      fetchFriends(),
       fetchChallenges(),
       fetchLeaderboard(),
       fetchUserPoints(),
@@ -81,11 +82,26 @@ export const useSocial = () => {
   };
 
   const fetchLeaderboard = async () => {
+    if (!user) return;
+
+    // Get friend IDs first
+    const friendIds = friends.map(f => 
+      f.requester_id === user.id ? f.addressee_id : f.requester_id
+    );
+    
+    // Include current user in the leaderboard
+    const allUserIds = [user.id, ...friendIds];
+
+    if (allUserIds.length === 0) {
+      setLeaderboard([]);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('user_points')
       .select('*')
-      .order('total_points', { ascending: false })
-      .limit(50);
+      .in('user_id', allUserIds)
+      .order('total_points', { ascending: false });
 
     if (!error && data) {
       // Fetch profiles for each user in leaderboard
