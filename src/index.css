@@ -2,87 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Warm, motivating color palette */
+    --background: 30 30% 98%;
+    --foreground: 20 20% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 20 20% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 20 20% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Coral/Orange primary for energy */
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Soft teal secondary */
+    --secondary: 174 45% 94%;
+    --secondary-foreground: 174 45% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 30 20% 94%;
+    --muted-foreground: 20 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Amber accent for achievements */
+    --accent: 38 92% 50%;
+    --accent-foreground: 38 92% 15%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Success green */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --border: 30 20% 90%;
+    --input: 30 20% 90%;
+    --ring: 24 95% 53%;
+
+    --radius: 1rem;
+
+    /* Category colors */
+    --category-salud: 142 70% 45%;
+    --category-finanzas: 217 90% 50%;
+    --category-aprendizaje: 262 80% 55%;
+    --category-relaciones: 340 80% 55%;
+    --category-carrera: 24 95% 53%;
+    --category-creatividad: 280 70% 55%;
+    --category-bienestar: 174 60% 45%;
+    --category-otro: 220 15% 50%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(24, 95%, 53%) 0%, hsl(38, 92%, 50%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142, 70%, 45%) 0%, hsl(160, 60%, 50%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(24, 95%, 53%) 0%, hsl(340, 80%, 55%) 50%, hsl(262, 80%, 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(30, 30%, 98%) 100%);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(20 20% 15% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(20 20% 15% / 0.1), 0 2px 4px -2px hsl(20 20% 15% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(20 20% 15% / 0.1), 0 4px 6px -4px hsl(20 20% 15% / 0.1);
+    --shadow-glow: 0 0 20px hsl(24 95% 53% / 0.3);
+    --shadow-card: 0 2px 12px -2px hsl(20 20% 15% / 0.08);
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 20 15% 8%;
+    --foreground: 30 20% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 20 15% 12%;
+    --card-foreground: 30 20% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 20 15% 12%;
+    --popover-foreground: 30 20% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 24 95% 58%;
+    --primary-foreground: 20 15% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 174 30% 18%;
+    --secondary-foreground: 174 45% 85%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 20 15% 18%;
+    --muted-foreground: 30 15% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 38 92% 55%;
+    --accent-foreground: 20 15% 8%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --success: 142 60% 50%;
+    --success-foreground: 20 15% 8%;
+
+    --border: 20 15% 20%;
+    --input: 20 15% 20%;
+    --ring: 24 95% 58%;
+
+    --shadow-glow: 0 0 20px hsl(24 95% 53% / 0.4);
+    
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -100,6 +128,186 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted/50 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/30;
+  }
+}
+
+@layer components {
+  /* Card variants */
+  .card-elevated {
+    @apply bg-card rounded-2xl shadow-[var(--shadow-card)] border border-border/50;
+  }
+
+  .card-glass {
+    @apply bg-card/80 backdrop-blur-xl rounded-2xl border border-border/30;
+  }
+
+  /* Progress bar styles */
+  .progress-bar {
+    @apply h-2 rounded-full bg-muted overflow-hidden;
+  }
+
+  .progress-bar-fill {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+    background: var(--gradient-primary);
+  }
+
+  .progress-bar-success {
+    background: var(--gradient-success);
+  }
+
+  /* Category badges */
+  .badge-category {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-salud {
+    @apply bg-[hsl(var(--category-salud)/0.15)] text-[hsl(var(--category-salud))];
+  }
+
+  .badge-finanzas {
+    @apply bg-[hsl(var(--category-finanzas)/0.15)] text-[hsl(var(--category-finanzas))];
+  }
+
+  .badge-aprendizaje {
+    @apply bg-[hsl(var(--category-aprendizaje)/0.15)] text-[hsl(var(--category-aprendizaje))];
+  }
+
+  .badge-relaciones {
+    @apply bg-[hsl(var(--category-relaciones)/0.15)] text-[hsl(var(--category-relaciones))];
+  }
+
+  .badge-carrera {
+    @apply bg-[hsl(var(--category-carrera)/0.15)] text-[hsl(var(--category-carrera))];
+  }
+
+  .badge-creatividad {
+    @apply bg-[hsl(var(--category-creatividad)/0.15)] text-[hsl(var(--category-creatividad))];
+  }
+
+  .badge-bienestar {
+    @apply bg-[hsl(var(--category-bienestar)/0.15)] text-[hsl(var(--category-bienestar))];
+  }
+
+  .badge-otro {
+    @apply bg-[hsl(var(--category-otro)/0.15)] text-[hsl(var(--category-otro))];
+  }
+
+  /* Floating action button */
+  .fab {
+    @apply fixed bottom-24 right-4 z-50 h-14 w-14 rounded-full shadow-lg;
+    background: var(--gradient-primary);
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Mobile bottom nav */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 h-20 bg-card/95 backdrop-blur-xl border-t border-border/50 z-40;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* Confetti animation */
+  @keyframes confetti-fall {
+    0% {
+      transform: translateY(-100vh) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(100vh) rotate(720deg);
+      opacity: 0;
+    }
+  }
+
+  .confetti {
+    animation: confetti-fall 3s ease-out forwards;
+  }
+
+  /* Celebrate pulse */
+  @keyframes celebrate-pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
+  .celebrate {
+    animation: celebrate-pulse 0.5s ease-in-out;
+  }
+
+  /* Slide up animation */
+  @keyframes slide-up {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.4s ease-out forwards;
+  }
+
+  /* Stagger children */
+  .stagger-children > * {
+    @apply animate-slide-up;
+  }
+
+  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+  .stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+  .stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+  .stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+  .stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+
+  /* Floating animation */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0));
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
   }
 }
