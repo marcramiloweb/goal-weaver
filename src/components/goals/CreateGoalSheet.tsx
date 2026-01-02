@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -10,12 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon, ChevronRight, ChevronLeft } from 'lucide-react';
+import { CalendarIcon, ChevronRight, ChevronLeft, Users, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -28,10 +30,18 @@ import {
   GOAL_TYPE_CONFIG 
 } from '@/types/goals';
 import { useGoals } from '@/hooks/useGoals';
+import { useSocial } from '@/hooks/useSocial';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CreateGoalSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface Friend {
+  id: string;
+  name: string;
 }
 
 export const CreateGoalSheet: React.FC<CreateGoalSheetProps> = ({
@@ -39,8 +49,12 @@ export const CreateGoalSheet: React.FC<CreateGoalSheetProps> = ({
   onOpenChange,
 }) => {
   const { createGoal } = useGoals();
+  const { friends } = useSocial();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [isSharedGoal, setIsSharedGoal] = useState(false);
+  const [selectedCollaborators, setSelectedCollaborators] = useState<Friend[]>([]);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -54,14 +68,64 @@ export const CreateGoalSheet: React.FC<CreateGoalSheetProps> = ({
     why: '',
   });
 
+  // Get friend profiles
+  const [friendProfiles, setFriendProfiles] = useState<Friend[]>([]);
+  
+  useEffect(() => {
+    const loadFriends = async () => {
+      if (friends.length === 0) return;
+      
+      const friendIds = friends.map(f => 
+        f.requester_id === user?.id ? f.addressee_id : f.requester_id
+      );
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', friendIds);
+      
+      if (data) {
+        setFriendProfiles(data.map(p => ({ id: p.id, name: p.name || 'Sin nombre' })));
+      }
+    };
+    
+    if (open) loadFriends();
+  }, [friends, open, user?.id]);
+
   const handleSubmit = async () => {
     if (!formData.title.trim()) return;
     
     setLoading(true);
-    await createGoal({
+    const result = await createGoal({
       ...formData,
       target_date: formData.target_date?.toISOString().split('T')[0],
     });
+    
+    // If shared goal, add collaborators
+    if (isSharedGoal && selectedCollaborators.length > 0 && result.data) {
+      // Update goal to mark as shared
+      await supabase
+        .from('goals')
+        .update({ is_shared: true })
+        .eq('id', result.data.id);
+      
+      // Add owner entry
+      await supabase.from('shared_goals').insert({
+        goal_id: result.data.id,
+        user_id: user?.id,
+        role: 'owner',
+      });
+      
+      // Add collaborators
+      for (const collab of selectedCollaborators) {
+        await supabase.from('shared_goals').insert({
+          goal_id: result.data.id,
+          user_id: collab.id,
+          role: 'collaborator',
+        });
+      }
+    }
+    
     setLoading(false);
     
     // Reset and close
@@ -76,8 +140,18 @@ export const CreateGoalSheet: React.FC<CreateGoalSheetProps> = ({
       icon: '🎯',
       why: '',
     });
+    setIsSharedGoal(false);
+    setSelectedCollaborators([]);
     setStep(1);
     onOpenChange(false);
+  };
+
+  const toggleCollaborator = (friend: Friend) => {
+    if (selectedCollaborators.find(c => c.id === friend.id)) {
+      setSelectedCollaborators(selectedCollaborators.filter(c => c.id !== friend.id));
+    } else {
+      setSelectedCollaborators([...selectedCollaborators, friend]);
+    }
   };
 
   const renderStep = () => {
@@ -252,6 +326,60 @@ export const CreateGoalSheet: React.FC<CreateGoalSheetProps> = ({
                 ))}
               </div>
             </div>
+
+            {/* Shared Goal Section */}
+            {friendProfiles.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Meta conjunta
+                  </Label>
+                  <Switch
+                    checked={isSharedGoal}
+                    onCheckedChange={setIsSharedGoal}
+                  />
+                </div>
+                
+                {isSharedGoal && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Selecciona amigos para compartir esta meta
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {friendProfiles.map((friend) => {
+                        const isSelected = selectedCollaborators.find(c => c.id === friend.id);
+                        return (
+                          <button
+                            key={friend.id}
+                            type="button"
+                            onClick={() => toggleCollaborator(friend)}
+                            className={cn(
+                              'px-3 py-2 rounded-full text-sm transition-all flex items-center gap-1',
+                              isSelected
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted hover:bg-muted/80'
+                            )}
+                          >
+                            {friend.name}
+                            {isSelected && <X className="h-3 w-3" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedCollaborators.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {selectedCollaborators.map((c) => (
+                          <Badge key={c.id} variant="secondary">
+                            {c.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
 

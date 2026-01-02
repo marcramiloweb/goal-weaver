@@ -32,6 +32,7 @@ export interface Goal {
   icon: string;
   color: string;
   is_featured: boolean;
+  is_shared?: boolean;
   created_at: string;
   updated_at: string;
 }

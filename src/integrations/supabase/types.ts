@@ -206,6 +206,7 @@ export type Database = {
           icon: string | null
           id: string
           is_featured: boolean | null
+          is_shared: boolean | null
           priority: Database["public"]["Enums"]["goal_priority"] | null
           start_date: string | null
           status: Database["public"]["Enums"]["goal_status"] | null
@@ -226,6 +227,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_featured?: boolean | null
+          is_shared?: boolean | null
           priority?: Database["public"]["Enums"]["goal_priority"] | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["goal_status"] | null
@@ -246,6 +248,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_featured?: boolean | null
+          is_shared?: boolean | null
           priority?: Database["public"]["Enums"]["goal_priority"] | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["goal_status"] | null
@@ -327,6 +330,41 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      shared_goals: {
+        Row: {
+          created_at: string
+          goal_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goal_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_goals_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       streaks: {
         Row: {
