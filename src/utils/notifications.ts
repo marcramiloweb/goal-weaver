@@ -9,8 +9,13 @@ export const notificationsSupported = (): boolean => {
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!notificationsSupported()) return false;
   
-  const permission = await Notification.requestPermission();
-  return permission === 'granted';
+  try {
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return false;
+  }
 };
 
 // Check if notification permission is granted
@@ -23,11 +28,27 @@ export const hasNotificationPermission = (): boolean => {
 export const showNotification = (title: string, options?: NotificationOptions): void => {
   if (!hasNotificationPermission()) return;
   
-  new Notification(title, {
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
-    ...options,
-  });
+  try {
+    // Try to use service worker notifications if available (for PWA)
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(registration => {
+        registration.showNotification(title, {
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+          ...options,
+        });
+      });
+    } else {
+      // Fallback to regular notifications
+      new Notification(title, {
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        ...options,
+      });
+    }
+  } catch (error) {
+    console.error('Error showing notification:', error);
+  }
 };
 
 // Show daily motivational notification
@@ -47,6 +68,7 @@ export const getRandomQuote = (): string => {
 
 // Schedule daily notification (simplified - uses localStorage to track)
 const LAST_NOTIFICATION_KEY = 'lastMotivationalNotification';
+const NOTIFICATION_ENABLED_KEY = 'notificationsEnabled';
 
 export const shouldShowDailyNotification = (): boolean => {
   const lastNotification = localStorage.getItem(LAST_NOTIFICATION_KEY);
@@ -63,10 +85,19 @@ export const markNotificationShown = (): void => {
   localStorage.setItem(LAST_NOTIFICATION_KEY, new Date().toISOString());
 };
 
+export const setNotificationsEnabled = (enabled: boolean): void => {
+  localStorage.setItem(NOTIFICATION_ENABLED_KEY, String(enabled));
+};
+
+export const areNotificationsEnabled = (): boolean => {
+  return localStorage.getItem(NOTIFICATION_ENABLED_KEY) !== 'false';
+};
+
 // Initialize daily notification system
 export const initializeDailyNotifications = async (): Promise<void> => {
   if (!notificationsSupported()) return;
   if (!hasNotificationPermission()) return;
+  if (!areNotificationsEnabled()) return;
   
   // Check if we should show today's notification
   if (shouldShowDailyNotification()) {
@@ -93,8 +124,10 @@ export const enableNotifications = async (): Promise<{
   const granted = await requestNotificationPermission();
   
   if (granted) {
-    // Mark as enabled and show immediate notification
+    setNotificationsEnabled(true);
     markNotificationShown();
+    
+    // Show immediate notification
     showNotification('¡Notificaciones activadas! 🔔', {
       body: getDailyQuote(),
       tag: 'notification-enabled',
@@ -110,4 +143,31 @@ export const enableNotifications = async (): Promise<{
     success: false, 
     message: 'No se pudieron activar las notificaciones. Por favor, permite las notificaciones en la configuración de tu navegador.' 
   };
+};
+
+// Disable notifications
+export const disableNotifications = (): void => {
+  setNotificationsEnabled(false);
+};
+
+// Schedule a notification for a specific time (for goal reminders)
+export const scheduleGoalReminder = (
+  title: string, 
+  body: string, 
+  delayMs: number
+): number => {
+  if (!hasNotificationPermission()) return 0;
+  
+  return window.setTimeout(() => {
+    showNotification(title, {
+      body,
+      tag: 'goal-reminder',
+      requireInteraction: true,
+    });
+  }, delayMs);
+};
+
+// Clear a scheduled reminder
+export const clearScheduledReminder = (timerId: number): void => {
+  window.clearTimeout(timerId);
 };

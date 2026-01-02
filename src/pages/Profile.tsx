@@ -70,9 +70,17 @@ export const Profile: React.FC = () => {
   const [editBio, setEditBio] = useState('');
   const [saving, setSaving] = useState(false);
   
-  // Settings state
-  const [achievementsCount, setAchievementsCount] = useState(preferences?.achievements_display_count || 3);
-  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(preferences?.notifications_enabled ?? true);
+  // Settings state - sync with preferences when they load
+  const [achievementsCount, setAchievementsCount] = useState(3);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  // Sync state when preferences load
+  React.useEffect(() => {
+    if (preferences) {
+      setAchievementsCount(preferences.achievements_display_count || 3);
+      setNotificationsEnabled(preferences.notifications_enabled ?? true);
+    }
+  }, [preferences]);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -101,6 +109,16 @@ export const Profile: React.FC = () => {
 
   const handleSaveSettings = async () => {
     setSaving(true);
+    
+    // Update local storage for notifications
+    if (notificationsEnabled) {
+      const { setNotificationsEnabled } = await import('@/utils/notifications');
+      setNotificationsEnabled(true);
+    } else {
+      const { disableNotifications } = await import('@/utils/notifications');
+      disableNotifications();
+    }
+    
     const { error } = await updatePreferences({
       achievements_display_count: achievementsCount,
       notifications_enabled: notificationsEnabled,

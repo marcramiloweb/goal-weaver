@@ -88,8 +88,42 @@ export const useSocial = () => {
       .limit(50);
 
     if (!error && data) {
-      setLeaderboard(data as UserPoints[]);
+      // Fetch profiles for each user in leaderboard
+      const userIds = data.map(d => d.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url, email')
+        .in('id', userIds);
+
+      const leaderboardWithProfiles = data.map(item => ({
+        ...item,
+        profile: profiles?.find(p => p.id === item.user_id) || null,
+      }));
+      
+      setLeaderboard(leaderboardWithProfiles as UserPoints[]);
     }
+  };
+
+  // Search users by name or email
+  const searchUsers = async (query: string): Promise<{ id: string; name: string; email?: string; avatar_url?: string }[]> => {
+    if (!query.trim() || query.length < 2) return [];
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, avatar_url, email')
+      .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
+      .limit(20);
+
+    if (error || !data) return [];
+    
+    // Filter out current user and existing friends
+    return data.filter(p => {
+      if (p.id === user?.id) return false;
+      const isFriend = friends.some(f => 
+        f.requester_id === p.id || f.addressee_id === p.id
+      );
+      return !isFriend;
+    });
   };
 
   const fetchUserPoints = async () => {
@@ -428,6 +462,7 @@ export const useSocial = () => {
     loading,
     sendFriendRequest,
     sendFriendRequestById,
+    searchUsers,
     respondToRequest,
     removeFriend,
     createChallenge,

@@ -26,6 +26,7 @@ const League: React.FC = () => {
     friendStreaks,
     loading,
     sendFriendRequestById,
+    searchUsers,
     respondToRequest,
     removeFriend,
     createChallenge,
@@ -197,6 +198,7 @@ const League: React.FC = () => {
               onRemoveFriend={removeFriend}
               onOpenChat={handleOpenChat}
               onCreateChallenge={handleCreateChallenge}
+              onSearchUsers={searchUsers}
             />
           </TabsContent>
 
