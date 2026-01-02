@@ -43,11 +43,17 @@ import {
   Edit,
   Camera,
   Image as ImageIcon,
-  Upload
+  Upload,
+  BellRing
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { LEAGUE_TIERS } from '@/types/social';
+import { 
+  enableNotifications, 
+  hasNotificationPermission, 
+  notificationsSupported 
+} from '@/utils/notifications';
 
 export const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -336,21 +342,36 @@ export const Profile: React.FC = () => {
 
               <button 
                 className="w-full flex items-center gap-3 p-4 bg-card rounded-xl hover:bg-muted/50 transition-colors"
-                onClick={() => {
-                  if ('Notification' in window) {
-                    Notification.requestPermission().then(permission => {
-                      if (permission === 'granted') {
-                        toast({
-                          title: 'Notificaciones activadas',
-                          description: 'Recibirás recordatorios de tus metas',
-                        });
-                      }
+                onClick={async () => {
+                  if (hasNotificationPermission()) {
+                    toast({
+                      title: 'Ya tienes notificaciones activadas',
+                      description: 'Recibirás frases motivacionales cada día',
                     });
+                    return;
                   }
+
+                  const result = await enableNotifications();
+                  toast({
+                    title: result.success ? '¡Notificaciones activadas!' : 'No se pudieron activar',
+                    description: result.message,
+                    variant: result.success ? 'default' : 'destructive',
+                  });
                 }}
               >
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                <span className="flex-1 text-left">Activar notificaciones</span>
+                {hasNotificationPermission() ? (
+                  <BellRing className="h-5 w-5 text-green-500" />
+                ) : (
+                  <Bell className="h-5 w-5 text-muted-foreground" />
+                )}
+                <div className="flex-1 text-left">
+                  <span className="block">Notificaciones motivacionales</span>
+                  <span className="text-xs text-muted-foreground">
+                    {hasNotificationPermission() 
+                      ? 'Activadas - recibirás frases cada día' 
+                      : 'Recibe una frase motivacional cada día'}
+                  </span>
+                </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
 

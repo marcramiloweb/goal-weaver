@@ -126,4 +126,36 @@ export const MOTIVATIONAL_QUOTES = [
   "Hoy es un buen día para avanzar hacia tus metas.",
   "Recuerda por qué empezaste. 💪",
   "Pequeños progresos siguen siendo progresos.",
+  "La disciplina es el puente entre metas y logros. 🌉",
+  "Cree en ti mismo y todo será posible. ✨",
+  "El momento perfecto es ahora. ¡Actúa!",
+  "Tu futuro yo te agradecerá el esfuerzo de hoy.",
+  "Los sueños no funcionan a menos que tú lo hagas. 💫",
+  "Cada día es una nueva oportunidad para mejorar.",
+  "La constancia supera al talento cuando el talento no es constante.",
+  "No te rindas, los comienzos siempre son difíciles. 🚀",
+  "Eres más fuerte de lo que crees. 💪",
+  "La mejor inversión es en ti mismo.",
+  "Enfócate en el progreso, no en la perfección.",
+  "Hoy puede ser el día que cambie todo. 🌅",
+  "Las pequeñas victorias construyen grandes triunfos.",
+  "Tu actitud determina tu dirección. 🧭",
+  "Cada experto fue una vez un principiante.",
+  "La motivación te pone en marcha, el hábito te mantiene.",
+  "Visualiza tu éxito y trabaja para alcanzarlo. 🎯",
+  "El fracaso es solo una lección disfrazada.",
+  "Conviértete en la persona que quieres ser.",
+  "La paciencia es amarga, pero sus frutos son dulces. 🍎",
+  "Nunca es tarde para ser lo que podrías haber sido.",
+  "Tu única competencia eres tú mismo ayer.",
+  "El coraje no es la ausencia de miedo, es actuar a pesar de él. 🦁"
 ];
+
+// Get a unique quote based on the date (changes daily)
+export const getDailyQuote = (): string => {
+  const today = new Date();
+  const startOfYear = new Date(today.getFullYear(), 0, 0);
+  const diff = today.getTime() - startOfYear.getTime();
+  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return MOTIVATIONAL_QUOTES[dayOfYear % MOTIVATIONAL_QUOTES.length];
+};
