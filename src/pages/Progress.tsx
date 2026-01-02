@@ -270,58 +270,34 @@ export const Progress: React.FC = () => {
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
                   <div className="text-xl font-bold text-green-500">
-                    {challenges.filter(c => c.status === 'completed' && c.winner_id === user?.id).length}
+                    {challenges.filter(c => c.status === 'completed').length}
                   </div>
-                  <p className="text-xs text-muted-foreground">Ganados</p>
+                  <p className="text-xs text-muted-foreground">Completados</p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
-                  <div className="text-xl font-bold text-red-500">
-                    {challenges.filter(c => c.status === 'completed' && c.winner_id && c.winner_id !== user?.id).length}
+                  <div className="text-xl font-bold text-amber-500">
+                    {challenges.filter(c => {
+                      const isCreator = c.creator_id === user?.id;
+                      const myProgress = isCreator ? c.creator_progress : c.opponent_progress;
+                      return c.status === 'active' && myProgress >= c.target_value;
+                    }).length}
                   </div>
-                  <p className="text-xs text-muted-foreground">Perdidos</p>
+                  <p className="text-xs text-muted-foreground">Tu parte lista</p>
                 </div>
               </div>
 
-              {/* Win Rate Chart */}
+              {/* Completion Chart */}
               {challenges.filter(c => c.status === 'completed').length > 0 && (
                 <div>
-                  <p className="text-sm font-medium mb-2">Tasa de victorias</p>
-                  <div className="h-32">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={[
-                          {
-                            name: 'Ganados',
-                            value: challenges.filter(c => c.status === 'completed' && c.winner_id === user?.id).length,
-                            fill: 'hsl(var(--success))'
-                          },
-                          {
-                            name: 'Perdidos',
-                            value: challenges.filter(c => c.status === 'completed' && c.winner_id && c.winner_id !== user?.id).length,
-                            fill: 'hsl(var(--destructive))'
-                          }
-                        ]}
-                        layout="vertical"
-                      >
-                        <XAxis type="number" hide />
-                        <YAxis 
-                          type="category" 
-                          dataKey="name" 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                          width={70}
-                        />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                          {[
-                            { fill: 'hsl(142, 76%, 36%)' },
-                            { fill: 'hsl(0, 84%, 60%)' }
-                          ].map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <p className="text-sm font-medium mb-2">Desafíos completados juntos 🎉</p>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <Trophy className="h-8 w-8 text-green-500" />
+                    <div>
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {challenges.filter(c => c.status === 'completed').length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">¡Desafíos superados en equipo!</p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -340,7 +316,8 @@ export const Progress: React.FC = () => {
                         const theirProgress = isCreator ? challenge.opponent_progress : challenge.creator_progress;
                         const myPercentage = (myProgress / challenge.target_value) * 100;
                         const theirPercentage = (theirProgress / challenge.target_value) * 100;
-                        const amWinning = myProgress > theirProgress;
+                        const myCompleted = myProgress >= challenge.target_value;
+                        const theirCompleted = theirProgress >= challenge.target_value;
                         
                         // Get opponent name from leaderboard
                         const opponentId = isCreator ? challenge.opponent_id : challenge.creator_id;
@@ -351,7 +328,11 @@ export const Progress: React.FC = () => {
                             key={challenge.id} 
                             className={cn(
                               "p-3 rounded-lg border",
-                              amWinning ? "border-green-500/30 bg-green-500/5" : "border-red-500/30 bg-red-500/5"
+                              myCompleted && theirCompleted 
+                                ? "border-green-500/50 bg-green-500/10"
+                                : myCompleted 
+                                  ? "border-amber-500/30 bg-amber-500/5" 
+                                  : "border-muted"
                             )}
                           >
                             <div className="flex items-center justify-between mb-2">
@@ -359,12 +340,10 @@ export const Progress: React.FC = () => {
                                 <span className="text-lg">{challenge.icon}</span>
                                 <span className="font-medium text-sm truncate max-w-[120px]">{challenge.title}</span>
                               </div>
-                              {amWinning ? (
-                                <Badge className="bg-green-500 text-xs">Ganando</Badge>
-                              ) : myProgress === theirProgress ? (
-                                <Badge variant="secondary" className="text-xs">Empate</Badge>
+                              {myCompleted ? (
+                                <Badge className="bg-green-500 text-xs">✓ Tu parte</Badge>
                               ) : (
-                                <Badge variant="destructive" className="text-xs">Perdiendo</Badge>
+                                <Badge variant="secondary" className="text-xs">En progreso</Badge>
                               )}
                             </div>
                             
@@ -372,17 +351,21 @@ export const Progress: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <span className="text-xs w-12 truncate">Tú</span>
                                 <ProgressBar value={myPercentage} className="h-2 flex-1" />
-                                <span className="text-xs font-medium w-8 text-right">{myProgress}</span>
+                                <span className={cn("text-xs font-medium w-8 text-right", myCompleted && "text-green-500")}>
+                                  {myCompleted ? '✓' : myProgress}
+                                </span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-xs w-12 truncate">{opponentProfile?.name || 'Rival'}</span>
+                                <span className="text-xs w-12 truncate">{opponentProfile?.name || 'Amigo'}</span>
                                 <ProgressBar value={theirPercentage} className="h-2 flex-1" />
-                                <span className="text-xs font-medium w-8 text-right">{theirProgress}</span>
+                                <span className={cn("text-xs font-medium w-8 text-right", theirCompleted && "text-green-500")}>
+                                  {theirCompleted ? '✓' : theirProgress}
+                                </span>
                               </div>
                             </div>
                             
                             <div className="text-xs text-muted-foreground text-center mt-2">
-                              Meta: {challenge.target_value}
+                              Meta: {challenge.target_value} cada uno
                             </div>
                           </div>
                         );
@@ -391,31 +374,23 @@ export const Progress: React.FC = () => {
                 </div>
               )}
 
-              {/* Recent Winners */}
+              {/* Recent Completions */}
               {challenges.filter(c => c.status === 'completed').length > 0 && (
                 <div>
-                  <p className="text-sm font-medium mb-2">Últimos resultados</p>
+                  <p className="text-sm font-medium mb-2">Completados recientemente</p>
                   <div className="flex flex-wrap gap-2">
                     {challenges
                       .filter(c => c.status === 'completed')
                       .slice(0, 5)
-                      .map((challenge) => {
-                        const won = challenge.winner_id === user?.id;
-                        return (
-                          <div
-                            key={challenge.id}
-                            className={cn(
-                              "flex items-center gap-1 px-2 py-1 rounded-full text-xs",
-                              won 
-                                ? "bg-green-500/20 text-green-600 dark:text-green-400" 
-                                : "bg-red-500/20 text-red-600 dark:text-red-400"
-                            )}
-                          >
-                            {won ? <Trophy className="h-3 w-3" /> : <Swords className="h-3 w-3" />}
-                            {challenge.icon}
-                          </div>
-                        );
-                      })}
+                      .map((challenge) => (
+                        <div
+                          key={challenge.id}
+                          className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-600 dark:text-green-400"
+                        >
+                          <Trophy className="h-3 w-3" />
+                          {challenge.icon}
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}

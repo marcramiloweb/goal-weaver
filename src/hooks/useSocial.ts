@@ -336,13 +336,24 @@ export const useSocial = () => {
     const isCreator = challenge.creator_id === user.id;
     const updateField = isCreator ? 'creator_progress' : 'opponent_progress';
 
-    // Check if this progress completes the challenge
+    // Calculate new progress values
+    const newCreatorProgress = isCreator ? progress : challenge.creator_progress;
+    const newOpponentProgress = isCreator ? challenge.opponent_progress : progress;
+
     const updates: Record<string, any> = { [updateField]: progress };
     
-    if (progress >= challenge.target_value) {
+    // Check if BOTH players have reached the target - then the challenge is complete
+    const creatorCompleted = newCreatorProgress >= challenge.target_value;
+    const opponentCompleted = newOpponentProgress >= challenge.target_value;
+    
+    if (creatorCompleted && opponentCompleted) {
+      // Both completed - challenge is done, both win!
       updates.status = 'completed';
-      updates.winner_id = user.id;
-      toast({ title: '🏆 ¡Victoria!', description: '¡Has ganado el desafío!' });
+      updates.winner_id = null; // null means both won
+      toast({ title: '🎉 ¡Desafío completado!', description: '¡Ambos habéis ganado!' });
+    } else if (progress >= challenge.target_value) {
+      // Current user completed their part
+      toast({ title: '✅ ¡Meta alcanzada!', description: 'Esperando a que tu amigo complete su parte' });
     }
 
     const { error } = await supabase
@@ -352,9 +363,13 @@ export const useSocial = () => {
 
     if (!error) {
       await fetchChallenges();
-      // Add points for completing a challenge
+      // Add points when completing your part
       if (progress >= challenge.target_value) {
-        await addPoints(50);
+        await addPoints(25);
+      }
+      // Bonus points when both complete
+      if (creatorCompleted && opponentCompleted) {
+        await addPoints(25);
       }
     }
     return { error };
