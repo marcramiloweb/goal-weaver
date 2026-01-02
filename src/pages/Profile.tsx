@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGoals, useStreak } from '@/hooks/useGoals';
 import { useSocial } from '@/hooks/useSocial';
+import { useAdmin } from '@/hooks/useAdmin';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,6 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
   User, 
-  Mail, 
   LogOut, 
   Settings, 
   Trophy,
@@ -42,9 +42,9 @@ import {
   ChevronRight,
   Edit,
   Camera,
-  Image as ImageIcon,
-  Upload,
-  BellRing
+  BellRing,
+  Shield,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,6 +61,7 @@ export const Profile: React.FC = () => {
   const { goals, completedGoals } = useGoals();
   const { streak } = useStreak();
   const { preferences, userPoints, updatePreferences } = useSocial();
+  const { isAdmin } = useAdmin();
   const { toast } = useToast();
 
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -69,6 +70,8 @@ export const Profile: React.FC = () => {
   const [editName, setEditName] = useState(profile?.name || '');
   const [editBio, setEditBio] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   
   // Settings state - sync with preferences when they load
   const [achievementsCount, setAchievementsCount] = useState(3);
@@ -142,11 +145,57 @@ export const Profile: React.FC = () => {
   const handleImageUpload = async (file: File, type: 'avatar' | 'banner') => {
     if (!user) return;
     
-    // For now, just show a message that storage needs to be set up
-    toast({
-      title: 'Próximamente',
-      description: 'La subida de imágenes estará disponible pronto',
-    });
+    const isAvatar = type === 'avatar';
+    if (isAvatar) setUploadingAvatar(true);
+    else setUploadingBanner(true);
+
+    try {
+      // Validate file
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('El archivo es demasiado grande (máx. 5MB)');
+      }
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Solo se permiten imágenes');
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${type}-${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-images')
+        .getPublicUrl(filePath);
+
+      // Update profile
+      const updateData = isAvatar 
+        ? { avatar_url: publicUrl } 
+        : { banner_url: publicUrl };
+      
+      const { error: updateError } = await updateProfile(updateData);
+      if (updateError) throw updateError;
+
+      toast({
+        title: '¡Imagen actualizada!',
+        description: `Tu ${isAvatar ? 'foto de perfil' : 'banner'} se ha guardado`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error al subir imagen',
+        description: error.message || 'Inténtalo de nuevo',
+        variant: 'destructive',
+      });
+    } finally {
+      if (isAvatar) setUploadingAvatar(false);
+      else setUploadingBanner(false);
+    }
   };
 
   // Simple achievements/badges based on data
@@ -196,13 +245,19 @@ export const Profile: React.FC = () => {
       <div className="pb-24">
         {/* Banner */}
         <div 
-          className="h-32 bg-gradient-to-br from-primary/30 via-accent/20 to-secondary/30 relative"
+          className="h-32 bg-gradient-to-br from-primary/30 via-accent/20 to-secondary/30 relative bg-cover bg-center"
+          style={profile?.banner_url ? { backgroundImage: `url(${profile.banner_url})` } : undefined}
         >
           <button
-            className="absolute bottom-2 right-2 p-2 bg-background/80 rounded-full"
+            className="absolute bottom-2 right-2 p-2 bg-background/80 rounded-full disabled:opacity-50"
             onClick={() => bannerInputRef.current?.click()}
+            disabled={uploadingBanner}
           >
-            <Camera className="w-4 h-4" />
+            {uploadingBanner ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Camera className="w-4 h-4" />
+            )}
           </button>
           <input
             type="file"
@@ -226,10 +281,15 @@ export const Profile: React.FC = () => {
               </AvatarFallback>
             </Avatar>
             <button
-              className="absolute bottom-0 right-0 p-2 bg-primary rounded-full text-primary-foreground shadow-lg"
+              className="absolute bottom-0 right-0 p-2 bg-primary rounded-full text-primary-foreground shadow-lg disabled:opacity-50"
               onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
             >
-              <Camera className="w-4 h-4" />
+              {uploadingAvatar ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
             </button>
             <input
               type="file"
@@ -261,8 +321,13 @@ export const Profile: React.FC = () => {
                   {tier.icon} {tier.name}
                 </Badge>
               )}
+              {isAdmin && (
+                <Badge variant="outline" className="border-primary text-primary">
+                  <Shield className="w-3 h-3 mr-1" />
+                  Admin
+                </Badge>
+              )}
             </div>
-            <p className="text-muted-foreground">{user?.email}</p>
             <Button
               variant="outline"
               size="sm"
@@ -349,6 +414,17 @@ export const Profile: React.FC = () => {
           <section>
             <h2 className="font-semibold text-lg mb-3">Ajustes</h2>
             <div className="space-y-2">
+              {isAdmin && (
+                <button 
+                  className="w-full flex items-center gap-3 p-4 bg-primary/10 rounded-xl hover:bg-primary/20 transition-colors border border-primary/20"
+                  onClick={() => navigate('/admin')}
+                >
+                  <Shield className="h-5 w-5 text-primary" />
+                  <span className="flex-1 text-left font-medium">Panel de Administración</span>
+                  <ChevronRight className="h-5 w-5 text-primary" />
+                </button>
+              )}
+
               <button 
                 className="w-full flex items-center gap-3 p-4 bg-card rounded-xl hover:bg-muted/50 transition-colors"
                 onClick={() => setShowSettings(true)}
