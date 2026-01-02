@@ -27,7 +27,7 @@ const LeagueCard: React.FC<LeagueCardProps> = ({ userPoints, leaderboard, onView
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-500" />
-            Liga Semanal
+            Liga Anual
           </CardTitle>
           <Badge 
             variant="secondary" 

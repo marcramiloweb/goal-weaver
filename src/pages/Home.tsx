@@ -91,8 +91,9 @@ export const Home: React.FC = () => {
     }
   }, [goals, streak, checkIns.length]);
 
-  // Tree level based on earned achievements
-  const treeLevel = Math.min(1 + Math.floor(earnedAchievements.length / 2), 10);
+  // Tree level based on completed goals
+  const completedGoalsCount = goals.filter(g => g.status === 'completed').length;
+  const treeLevel = Math.min(1 + Math.floor(completedGoalsCount / 2), 10);
 
   // How many achievements to show
   const achievementsToShow = preferences?.achievements_display_count || 3;
@@ -168,7 +169,7 @@ export const Home: React.FC = () => {
             <div className="flex items-center gap-4">
               <GrowingTree 
                 level={treeLevel} 
-                achievementsCount={earnedAchievements.length}
+                achievementsCount={completedGoalsCount}
               />
               <div className="flex-1">
                 <h3 className="font-semibold text-lg">Tu Árbol de Logros</h3>
@@ -178,7 +179,7 @@ export const Home: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">
                     <Trophy className="w-3 h-3 mr-1" />
-                    {earnedAchievements.length} logros
+                    {completedGoalsCount} metas completadas
                   </Badge>
                   {treeLevel === 10 && (
                     <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500">

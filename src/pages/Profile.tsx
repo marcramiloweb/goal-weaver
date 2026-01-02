@@ -248,17 +248,6 @@ export const Profile: React.FC = () => {
           className="h-32 bg-gradient-to-br from-primary/30 via-accent/20 to-secondary/30 relative bg-cover bg-center"
           style={profile?.banner_url ? { backgroundImage: `url(${profile.banner_url})` } : undefined}
         >
-          <button
-            className="absolute bottom-2 right-2 p-2 bg-background/80 rounded-full disabled:opacity-50"
-            onClick={() => bannerInputRef.current?.click()}
-            disabled={uploadingBanner}
-          >
-            {uploadingBanner ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Camera className="w-4 h-4" />
-            )}
-          </button>
           <input
             type="file"
             ref={bannerInputRef}
@@ -267,8 +256,25 @@ export const Profile: React.FC = () => {
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleImageUpload(file, 'banner');
+              e.target.value = '';
             }}
           />
+          <button
+            type="button"
+            className="absolute bottom-2 right-2 p-2 bg-background/80 rounded-full disabled:opacity-50 z-10 cursor-pointer hover:bg-background transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              bannerInputRef.current?.click();
+            }}
+            disabled={uploadingBanner}
+          >
+            {uploadingBanner ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Camera className="w-4 h-4" />
+            )}
+          </button>
         </div>
 
         {/* Avatar */}
