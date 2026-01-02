@@ -3,6 +3,7 @@ package app.lovable.propositos2026.widgets
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
@@ -11,26 +12,12 @@ import app.lovable.propositos2026.MainActivity
 
 /**
  * Widget para mostrar las tareas de hoy
- * 
- * Para usar este widget:
- * 1. Copia este archivo a: android/app/src/main/java/app/lovable/propositos2026/widgets/
- * 2. Copia today_tasks_widget_layout.xml a: android/app/src/main/res/layout/
- * 3. Copia today_tasks_widget_info.xml a: android/app/src/main/res/xml/
- * 4. Añade el receiver en AndroidManifest.xml
  */
 class TodayTasksWidgetProvider : AppWidgetProvider() {
 
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray
-    ) {
-        for (appWidgetId in appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId)
-        }
-    }
-
     companion object {
+        const val ACTION_REFRESH = "app.lovable.propositos2026.REFRESH_TASKS_WIDGET"
+
         fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
@@ -47,6 +34,18 @@ class TodayTasksWidgetProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
+
+            // Intent para refresh manual
+            val refreshIntent = Intent(context, TodayTasksWidgetProvider::class.java).apply {
+                action = ACTION_REFRESH
+            }
+            val refreshPendingIntent = PendingIntent.getBroadcast(
+                context,
+                2,
+                refreshIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
 
             // Cargar datos desde SharedPreferences
             val prefs = context.getSharedPreferences("TodayTasksData", Context.MODE_PRIVATE)
@@ -95,6 +94,30 @@ class TodayTasksWidgetProvider : AppWidgetProvider() {
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+    }
+
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray
+    ) {
+        for (appWidgetId in appWidgetIds) {
+            updateAppWidget(context, appWidgetManager, appWidgetId)
+        }
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        
+        if (intent.action == ACTION_REFRESH) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val componentName = ComponentName(context, TodayTasksWidgetProvider::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            
+            for (appWidgetId in appWidgetIds) {
+                updateAppWidget(context, appWidgetManager, appWidgetId)
+            }
         }
     }
 }
