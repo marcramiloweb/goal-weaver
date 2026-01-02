@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
+// Points awarded per achievement
+const POINTS_PER_ACHIEVEMENT = 50;
+
 export interface Achievement {
   id: string;
   user_id: string;
@@ -199,14 +202,60 @@ export const useAchievements = () => {
       );
 
       if (isEarned) {
+        // Award points for earning achievement
+        await addPointsForAchievement();
+        
         toast({
           title: '🎉 ¡Logro desbloqueado!',
-          description: `Has conseguido "${(data as Achievement).name}"`,
+          description: `Has conseguido "${(data as Achievement).name}" (+${POINTS_PER_ACHIEVEMENT} pts)`,
         });
       }
     }
 
     return { data: data as Achievement | null, error };
+  };
+
+  // Add points when earning an achievement
+  const addPointsForAchievement = async () => {
+    if (!user) return;
+
+    // Get current points
+    const { data: currentPoints } = await supabase
+      .from('user_points')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (currentPoints) {
+      const newTotal = currentPoints.total_points + POINTS_PER_ACHIEVEMENT;
+      const newWeekly = currentPoints.weekly_points + POINTS_PER_ACHIEVEMENT;
+      
+      // Calculate new tier based on total points
+      let newTier = currentPoints.league_tier;
+      if (newTotal >= 15000) newTier = 'master';
+      else if (newTotal >= 5000) newTier = 'diamond';
+      else if (newTotal >= 1500) newTier = 'platinum';
+      else if (newTotal >= 500) newTier = 'gold';
+      else if (newTotal >= 100) newTier = 'silver';
+
+      await supabase
+        .from('user_points')
+        .update({
+          total_points: newTotal,
+          weekly_points: newWeekly,
+          league_tier: newTier,
+        })
+        .eq('user_id', user.id);
+    } else {
+      // Create user points if doesn't exist
+      await supabase
+        .from('user_points')
+        .insert({
+          user_id: user.id,
+          total_points: POINTS_PER_ACHIEVEMENT,
+          weekly_points: POINTS_PER_ACHIEVEMENT,
+        });
+    }
   };
 
   // Sincronizar logros con el progreso actual

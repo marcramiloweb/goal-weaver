@@ -28,9 +28,9 @@ export const Home: React.FC = () => {
   const { goals, activeGoals, featuredGoals, updateGoal } = useGoals();
   const { tasks, todayTasks, toggleTask } = useTasks();
   const { streak, updateStreak } = useStreak();
-  const { createCheckIn } = useCheckIns();
-  const { achievements } = useAchievements();
-  const { userPoints, leaderboard, preferences, addPoints } = useSocial();
+  const { checkIns, createCheckIn } = useCheckIns();
+  const { achievements, syncAchievements, earnedAchievements } = useAchievements();
+  const { userPoints, leaderboard, preferences, addPoints, refreshAll } = useSocial();
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -72,8 +72,26 @@ export const Home: React.FC = () => {
     return totalProgress / activeGoals.length;
   }, [activeGoals]);
 
-  // Calculate tree level based on achievements
-  const earnedAchievements = achievements.filter(a => a.is_earned);
+  // Sync achievements when goals/streak change
+  useEffect(() => {
+    if (goals.length > 0 || streak.current > 0) {
+      const completedByCategory: Record<string, number> = {};
+      goals.filter(g => g.status === 'completed').forEach(g => {
+        if (g.category) {
+          completedByCategory[g.category] = (completedByCategory[g.category] || 0) + 1;
+        }
+      });
+      
+      syncAchievements({
+        currentStreak: streak.current,
+        goalsCompleted: goals.filter(g => g.status === 'completed').length,
+        totalCheckIns: checkIns.length,
+        categoryGoals: completedByCategory,
+      });
+    }
+  }, [goals, streak, checkIns.length]);
+
+  // Tree level based on earned achievements
   const treeLevel = Math.min(1 + Math.floor(earnedAchievements.length / 2), 10);
 
   // How many achievements to show
@@ -101,13 +119,8 @@ export const Home: React.FC = () => {
       await updateGoal(goalId, { status: 'completed' });
       // Bonus points for completing goal
       await addPoints(50);
-    }
-  };
-
-  const handleToggleFeatured = async (goalId: string) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (goal) {
-      await updateGoal(goalId, { is_featured: !goal.is_featured });
+      // Refresh leaderboard
+      await refreshAll();
     }
   };
 

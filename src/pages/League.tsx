@@ -116,9 +116,9 @@ const League: React.FC = () => {
                       </Badge>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-muted-foreground">Puntos semanales</div>
+                      <div className="text-sm text-muted-foreground">Puntos anuales</div>
                       <div className="text-3xl font-bold text-primary">
-                        {userPoints.weekly_points}
+                        {userPoints.total_points}
                       </div>
                     </div>
                   </div>
@@ -129,7 +129,7 @@ const League: React.FC = () => {
             {/* Leaderboard */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Clasificación Semanal</CardTitle>
+                <CardTitle className="text-lg">Clasificación Anual 2026</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {leaderboard.map((player, index) => {
@@ -168,7 +168,7 @@ const League: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-primary">{player.weekly_points}</div>
+                        <div className="font-bold text-primary">{player.total_points}</div>
                         <div className="text-xs text-muted-foreground">pts</div>
                       </div>
                     </motion.div>

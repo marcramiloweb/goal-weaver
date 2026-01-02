@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -25,6 +26,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Users, 
@@ -33,10 +47,13 @@ import {
   RefreshCw, 
   Shield,
   Search,
-  TrendingUp
+  TrendingUp,
+  Pencil,
+  Save
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 export const Admin: React.FC = () => {
   const { isAdmin, loading: adminLoading } = useAdmin();
@@ -46,6 +63,13 @@ export const Admin: React.FC = () => {
   const [searchUsers, setSearchUsers] = useState('');
   const [searchGoals, setSearchGoals] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'user' | 'goal'; id: string; name: string } | null>(null);
+  
+  // Edit states
+  const [editUserOpen, setEditUserOpen] = useState(false);
+  const [editGoalOpen, setEditGoalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editingGoal, setEditingGoal] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
 
   if (adminLoading) {
     return (
@@ -90,6 +114,66 @@ export const Admin: React.FC = () => {
       });
     }
     setDeleteConfirm(null);
+  };
+
+  const handleEditUser = (user: any) => {
+    setEditingUser({ ...user });
+    setEditUserOpen(true);
+  };
+
+  const handleEditGoal = (goal: any) => {
+    setEditingGoal({ ...goal });
+    setEditGoalOpen(true);
+  };
+
+  const saveUser = async () => {
+    if (!editingUser) return;
+    setSaving(true);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        name: editingUser.name,
+        bio: editingUser.bio,
+      })
+      .eq('id', editingUser.id);
+
+    setSaving(false);
+
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo guardar', variant: 'destructive' });
+    } else {
+      toast({ title: 'Usuario actualizado' });
+      setEditUserOpen(false);
+      refresh();
+    }
+  };
+
+  const saveGoal = async () => {
+    if (!editingGoal) return;
+    setSaving(true);
+
+    const { error } = await supabase
+      .from('goals')
+      .update({
+        title: editingGoal.title,
+        description: editingGoal.description,
+        status: editingGoal.status,
+        target_value: editingGoal.target_value,
+        current_value: editingGoal.current_value,
+        priority: editingGoal.priority,
+      })
+      .eq('id', editingGoal.id);
+
+    setSaving(false);
+
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo guardar', variant: 'destructive' });
+    } else {
+      toast({ title: 'Meta actualizada' });
+      setEditGoalOpen(false);
+      refresh();
+    }
   };
 
   const totalGoals = allGoals.length;
@@ -191,18 +275,27 @@ export const Admin: React.FC = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteConfirm({ 
-                            type: 'user', 
-                            id: user.id, 
-                            name: user.name || user.email 
-                          })}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeleteConfirm({ 
+                              type: 'user', 
+                              id: user.id, 
+                              name: user.name || user.email 
+                            })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -262,18 +355,27 @@ export const Admin: React.FC = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteConfirm({ 
-                            type: 'goal', 
-                            id: goal.id, 
-                            name: goal.title 
-                          })}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditGoal(goal)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeleteConfirm({ 
+                              type: 'goal', 
+                              id: goal.id, 
+                              name: goal.title 
+                            })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -311,6 +413,150 @@ export const Admin: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit User Sheet */}
+      <Sheet open={editUserOpen} onOpenChange={setEditUserOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Editar Usuario</SheetTitle>
+          </SheetHeader>
+          {editingUser && (
+            <div className="mt-6 space-y-4">
+              <div>
+                <Label htmlFor="user-name">Nombre</Label>
+                <Input
+                  id="user-name"
+                  value={editingUser.name || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="user-email">Email</Label>
+                <Input
+                  id="user-email"
+                  value={editingUser.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div>
+                <Label htmlFor="user-bio">Bio</Label>
+                <Input
+                  id="user-bio"
+                  value={editingUser.bio || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, bio: e.target.value })}
+                />
+              </div>
+              <div className="pt-4">
+                <p className="text-sm text-muted-foreground mb-2">Estadísticas</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="p-2 bg-muted rounded">
+                    <span className="text-muted-foreground">Metas:</span> {editingUser.goals_count}
+                  </div>
+                  <div className="p-2 bg-muted rounded">
+                    <span className="text-muted-foreground">Completadas:</span> {editingUser.completed_count}
+                  </div>
+                </div>
+              </div>
+              <Button onClick={saveUser} disabled={saving} className="w-full">
+                {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Guardar cambios
+              </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit Goal Sheet */}
+      <Sheet open={editGoalOpen} onOpenChange={setEditGoalOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Editar Meta</SheetTitle>
+          </SheetHeader>
+          {editingGoal && (
+            <div className="mt-6 space-y-4">
+              <div>
+                <Label htmlFor="goal-title">Título</Label>
+                <Input
+                  id="goal-title"
+                  value={editingGoal.title || ''}
+                  onChange={(e) => setEditingGoal({ ...editingGoal, title: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="goal-description">Descripción</Label>
+                <Input
+                  id="goal-description"
+                  value={editingGoal.description || ''}
+                  onChange={(e) => setEditingGoal({ ...editingGoal, description: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="goal-status">Estado</Label>
+                <Select
+                  value={editingGoal.status}
+                  onValueChange={(value) => setEditingGoal({ ...editingGoal, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Activa</SelectItem>
+                    <SelectItem value="paused">Pausada</SelectItem>
+                    <SelectItem value="completed">Completada</SelectItem>
+                    <SelectItem value="abandoned">Abandonada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="goal-priority">Prioridad</Label>
+                <Select
+                  value={editingGoal.priority}
+                  onValueChange={(value) => setEditingGoal({ ...editingGoal, priority: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Baja</SelectItem>
+                    <SelectItem value="medium">Media</SelectItem>
+                    <SelectItem value="high">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="goal-current">Valor actual</Label>
+                  <Input
+                    id="goal-current"
+                    type="number"
+                    value={editingGoal.current_value || 0}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, current_value: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="goal-target">Valor objetivo</Label>
+                  <Input
+                    id="goal-target"
+                    type="number"
+                    value={editingGoal.target_value || 100}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, target_value: parseFloat(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <div className="pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Usuario: {editingGoal.profiles?.name || 'Anónimo'}
+                </p>
+              </div>
+              <Button onClick={saveGoal} disabled={saving} className="w-full">
+                {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Guardar cambios
+              </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 };
