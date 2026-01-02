@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Goal, Task, CheckIn, GoalCategory, GoalType, GoalPriority, GoalStatus } from '@/types/goals';
 import { useToast } from '@/hooks/use-toast';
-
+import { syncGoalsWidget, syncTasksWidget } from '@/utils/widgetSync';
 export const useGoals = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -28,6 +28,8 @@ export const useGoals = () => {
       });
     } else {
       setGoals((data || []) as Goal[]);
+      // Sincronizar con widget de Android
+      syncGoalsWidget(data || []);
     }
     setLoading(false);
   }, [user, toast]);
@@ -63,11 +65,14 @@ export const useGoals = () => {
         variant: 'destructive',
       });
     } else {
-      setGoals(prev => [data as Goal, ...prev]);
+      const newGoals = [data as Goal, ...goals];
+      setGoals(newGoals);
       toast({
         title: '¡Meta creada! 🎯',
         description: 'Tu nueva meta está lista para conquistar',
       });
+      // Sincronizar con widget de Android
+      syncGoalsWidget(newGoals);
     }
 
     return { data: data as Goal | null, error };
@@ -88,7 +93,10 @@ export const useGoals = () => {
         variant: 'destructive',
       });
     } else {
-      setGoals(prev => prev.map(g => g.id === id ? data as Goal : g));
+      const updatedGoals = goals.map(g => g.id === id ? data as Goal : g);
+      setGoals(updatedGoals);
+      // Sincronizar con widget de Android
+      syncGoalsWidget(updatedGoals);
     }
 
     return { data: data as Goal | null, error };
@@ -107,11 +115,14 @@ export const useGoals = () => {
         variant: 'destructive',
       });
     } else {
-      setGoals(prev => prev.filter(g => g.id !== id));
+      const remainingGoals = goals.filter(g => g.id !== id);
+      setGoals(remainingGoals);
       toast({
         title: 'Meta eliminada',
         description: 'La meta ha sido eliminada',
       });
+      // Sincronizar con widget de Android
+      syncGoalsWidget(remainingGoals);
     }
 
     return { error };
@@ -162,6 +173,8 @@ export const useTasks = (goalId?: string) => {
 
     if (!error) {
       setTasks((data || []) as Task[]);
+      // Sincronizar con widget de Android
+      syncTasksWidget(data || []);
     }
     setLoading(false);
   }, [user, goalId]);
@@ -185,7 +198,10 @@ export const useTasks = (goalId?: string) => {
       .single();
 
     if (!error) {
-      setTasks(prev => [...prev, data as Task]);
+      const newTasks = [...tasks, data as Task];
+      setTasks(newTasks);
+      // Sincronizar con widget de Android
+      syncTasksWidget(newTasks);
     }
 
     return { data: data as Task | null, error };
@@ -207,7 +223,10 @@ export const useTasks = (goalId?: string) => {
       .single();
 
     if (!error) {
-      setTasks(prev => prev.map(t => t.id === id ? data as Task : t));
+      const updatedTasks = tasks.map(t => t.id === id ? data as Task : t);
+      setTasks(updatedTasks);
+      // Sincronizar con widget de Android
+      syncTasksWidget(updatedTasks);
     }
 
     return { data: data as Task | null, error };
@@ -220,7 +239,10 @@ export const useTasks = (goalId?: string) => {
       .eq('id', id);
 
     if (!error) {
-      setTasks(prev => prev.filter(t => t.id !== id));
+      const remainingTasks = tasks.filter(t => t.id !== id);
+      setTasks(remainingTasks);
+      // Sincronizar con widget de Android
+      syncTasksWidget(remainingTasks);
     }
 
     return { error };
