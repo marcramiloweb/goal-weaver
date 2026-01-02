@@ -336,13 +336,26 @@ export const useSocial = () => {
     const isCreator = challenge.creator_id === user.id;
     const updateField = isCreator ? 'creator_progress' : 'opponent_progress';
 
+    // Check if this progress completes the challenge
+    const updates: Record<string, any> = { [updateField]: progress };
+    
+    if (progress >= challenge.target_value) {
+      updates.status = 'completed';
+      updates.winner_id = user.id;
+      toast({ title: '🏆 ¡Victoria!', description: '¡Has ganado el desafío!' });
+    }
+
     const { error } = await supabase
       .from('challenges')
-      .update({ [updateField]: progress })
+      .update(updates)
       .eq('id', challengeId);
 
     if (!error) {
       await fetchChallenges();
+      // Add points for completing a challenge
+      if (progress >= challenge.target_value) {
+        await addPoints(50);
+      }
     }
     return { error };
   };
