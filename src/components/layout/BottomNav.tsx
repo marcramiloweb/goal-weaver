@@ -1,12 +1,12 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Target, BarChart3, Trophy, User } from 'lucide-react';
+import { Home, Target, BarChart3, Trophy, User, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { path: '/', icon: Home, label: 'Hoy' },
   { path: '/goals', icon: Target, label: 'Metas' },
-  { path: '/achievements', icon: Trophy, label: 'Logros' },
+  { path: '/league', icon: Users, label: 'Liga' },
   { path: '/progress', icon: BarChart3, label: 'Progreso' },
   { path: '/profile', icon: User, label: 'Perfil' },
 ];
