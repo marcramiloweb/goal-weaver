@@ -803,7 +803,7 @@ export const Admin: React.FC = () => {
 
       {/* Proxy User Sheet */}
       <Sheet open={proxySheetOpen} onOpenChange={setProxySheetOpen}>
-        <SheetContent className="sm:max-w-lg">
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-blue-500" />
@@ -842,6 +842,110 @@ export const Admin: React.FC = () => {
                     </CardContent>
                   </Card>
                 </div>
+              </div>
+
+              {/* Solicitudes de amistad del usuario */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Solicitudes de Amistad
+                </h4>
+                {(() => {
+                  const userPendingReceived = friendships.filter(
+                    f => f.status === 'pending' && f.addressee_id === proxyUser.id
+                  );
+                  const userPendingSent = friendships.filter(
+                    f => f.status === 'pending' && f.requester_id === proxyUser.id
+                  );
+                  const userFriends = friendships.filter(
+                    f => f.status === 'accepted' && 
+                    (f.requester_id === proxyUser.id || f.addressee_id === proxyUser.id)
+                  );
+
+                  return (
+                    <div className="space-y-2">
+                      {userPendingReceived.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-orange-600 font-medium">Recibidas ({userPendingReceived.length})</p>
+                          {userPendingReceived.map((f) => (
+                            <Card key={f.id}>
+                              <CardContent className="p-3 flex items-center justify-between">
+                                <span className="text-sm font-medium">{f.requester?.name}</span>
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 text-green-600"
+                                    onClick={() => acceptFriendship(f.id)}
+                                  >
+                                    <UserCheck className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 text-red-600"
+                                    onClick={() => rejectFriendship(f.id)}
+                                  >
+                                    <UserX className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+
+                      {userPendingSent.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-blue-600 font-medium">Enviadas ({userPendingSent.length})</p>
+                          {userPendingSent.map((f) => (
+                            <Card key={f.id}>
+                              <CardContent className="p-3 flex items-center justify-between">
+                                <span className="text-sm">→ {f.addressee?.name}</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 text-red-600"
+                                  onClick={() => deleteFriendship(f.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+
+                      {userFriends.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-green-600 font-medium">Amigos ({userFriends.length})</p>
+                          {userFriends.map((f) => {
+                            const friendName = f.requester_id === proxyUser.id 
+                              ? f.addressee?.name 
+                              : f.requester?.name;
+                            return (
+                              <Card key={f.id}>
+                                <CardContent className="p-3 flex items-center justify-between">
+                                  <span className="text-sm font-medium">{friendName}</span>
+                                  <Badge variant="secondary" className="bg-green-100 text-green-700">
+                                    <UserCheck className="h-3 w-3 mr-1" />
+                                    Amigos
+                                  </Badge>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {userPendingReceived.length === 0 && userPendingSent.length === 0 && userFriends.length === 0 && (
+                        <p className="text-center text-muted-foreground text-sm py-4">
+                          Sin solicitudes ni amigos
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-3">
