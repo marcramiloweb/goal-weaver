@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Friendship, FriendStreak, UserPoints } from '@/types/social';
-import { Users, UserPlus, MessageCircle, Flame, Check, X, Swords, Search, Mail, AtSign, Loader2 } from 'lucide-react';
+import { Users, UserPlus, MessageCircle, Flame, Check, X, Swords, Search, Mail, AtSign, Loader2, Eye, Target, Trophy, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +51,14 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchTab, setSearchTab] = useState<'search' | 'leaderboard'>('search');
   const [friendProfiles, setFriendProfiles] = useState<Map<string, FriendProfile>>(new Map());
+  const [viewingFriend, setViewingFriend] = useState<string | null>(null);
+  const [friendStats, setFriendStats] = useState<{
+    goals: number;
+    completedGoals: number;
+    achievements: number;
+    challenges: number;
+  } | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   // Fetch friend profiles that are not in leaderboard
   useEffect(() => {
@@ -129,6 +138,53 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
     return friendProfiles.get(friendId) || null;
   };
 
+  // Fetch friend stats when viewing
+  const handleViewFriend = async (friendId: string) => {
+    setViewingFriend(friendId);
+    setLoadingStats(true);
+    setFriendStats(null);
+
+    try {
+      // Fetch goals count
+      const { count: goalsCount } = await supabase
+        .from('goals')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', friendId);
+
+      // Fetch completed goals count
+      const { count: completedCount } = await supabase
+        .from('goals')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', friendId)
+        .eq('status', 'completed');
+
+      // Fetch earned achievements count
+      const { count: achievementsCount } = await supabase
+        .from('user_achievements')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', friendId)
+        .eq('is_earned', true);
+
+      // Fetch challenges count (active + completed)
+      const { count: challengesCount } = await supabase
+        .from('challenges')
+        .select('*', { count: 'exact', head: true })
+        .or(`creator_id.eq.${friendId},opponent_id.eq.${friendId}`)
+        .in('status', ['active', 'completed']);
+
+      setFriendStats({
+        goals: goalsCount || 0,
+        completedGoals: completedCount || 0,
+        achievements: achievementsCount || 0,
+        challenges: challengesCount || 0,
+      });
+    } catch (error) {
+      console.error('Error fetching friend stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
   // Filter leaderboard for potential friends (not already friends)
   const potentialFriends = leaderboard.filter(p => {
     if (p.user_id === user?.id) return false;
@@ -138,6 +194,7 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
     return !isFriend;
   });
   return (
+    <>
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -394,6 +451,14 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8"
+                      onClick={() => handleViewFriend(friendId)}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
                       onClick={() => onOpenChat(friendId)}
                     >
                       <MessageCircle className="w-4 h-4" />
@@ -414,6 +479,47 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
         )}
       </CardContent>
     </Card>
+
+    {/* Friend Stats Dialog */}
+    <Dialog open={!!viewingFriend} onOpenChange={(open) => !open && setViewingFriend(null)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Eye className="w-5 h-5" />
+            Estadísticas de {viewingFriend ? getFriendProfile(viewingFriend)?.name || 'Amigo' : ''}
+          </DialogTitle>
+        </DialogHeader>
+        {loadingStats ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : friendStats ? (
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="flex flex-col items-center p-4 bg-muted/50 rounded-lg">
+              <Target className="w-8 h-8 text-primary mb-2" />
+              <span className="text-2xl font-bold">{friendStats.goals}</span>
+              <span className="text-sm text-muted-foreground">Metas totales</span>
+            </div>
+            <div className="flex flex-col items-center p-4 bg-green-500/10 rounded-lg">
+              <Check className="w-8 h-8 text-green-500 mb-2" />
+              <span className="text-2xl font-bold">{friendStats.completedGoals}</span>
+              <span className="text-sm text-muted-foreground">Completadas</span>
+            </div>
+            <div className="flex flex-col items-center p-4 bg-yellow-500/10 rounded-lg">
+              <Trophy className="w-8 h-8 text-yellow-500 mb-2" />
+              <span className="text-2xl font-bold">{friendStats.achievements}</span>
+              <span className="text-sm text-muted-foreground">Logros</span>
+            </div>
+            <div className="flex flex-col items-center p-4 bg-purple-500/10 rounded-lg">
+              <Zap className="w-8 h-8 text-purple-500 mb-2" />
+              <span className="text-2xl font-bold">{friendStats.challenges}</span>
+              <span className="text-sm text-muted-foreground">Desafíos</span>
+            </div>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 
