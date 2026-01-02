@@ -40,6 +40,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Users, 
   Target, 
@@ -54,7 +56,10 @@ import {
   UserX,
   Eye,
   X,
-  UserPlus
+  UserPlus,
+  Swords,
+  MessageCircle,
+  Send
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -68,6 +73,31 @@ interface Friendship {
   created_at: string;
   requester?: { name: string; email: string };
   addressee?: { name: string; email: string };
+}
+
+interface Challenge {
+  id: string;
+  creator_id: string;
+  opponent_id: string;
+  title: string;
+  description?: string;
+  status: string;
+  target_value: number;
+  creator_progress: number;
+  opponent_progress: number;
+  created_at: string;
+  end_date?: string;
+  creator?: { name: string };
+  opponent?: { name: string };
+}
+
+interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+  is_read: boolean;
 }
 
 export const Admin: React.FC = () => {
@@ -94,6 +124,16 @@ export const Admin: React.FC = () => {
   // Friendships state
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [loadingFriendships, setLoadingFriendships] = useState(false);
+
+  // Challenges state
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loadingChallenges, setLoadingChallenges] = useState(false);
+
+  // Proxy chat state
+  const [proxyMessages, setProxyMessages] = useState<Message[]>([]);
+  const [proxyChatFriendId, setProxyChatFriendId] = useState<string | null>(null);
+  const [proxyNewMessage, setProxyNewMessage] = useState('');
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   // Fetch friendships
   const fetchFriendships = async () => {
@@ -126,9 +166,89 @@ export const Admin: React.FC = () => {
     setLoadingFriendships(false);
   };
 
+  // Fetch challenges
+  const fetchChallenges = async () => {
+    setLoadingChallenges(true);
+    const { data } = await supabase
+      .from('challenges')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      const userIds = [...new Set(data.flatMap(c => [c.creator_id, c.opponent_id]))];
+      
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', userIds);
+
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      const enrichedChallenges = data.map(c => ({
+        ...c,
+        creator: profilesMap.get(c.creator_id) || { name: 'Desconocido' },
+        opponent: profilesMap.get(c.opponent_id) || { name: 'Desconocido' },
+      }));
+
+      setChallenges(enrichedChallenges);
+    }
+    setLoadingChallenges(false);
+  };
+
+  // Fetch proxy user messages
+  const fetchProxyMessages = async (userId: string, friendId: string) => {
+    setLoadingMessages(true);
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .or(`and(sender_id.eq.${userId},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${userId})`)
+      .order('created_at', { ascending: true });
+
+    if (data) {
+      setProxyMessages(data);
+    }
+    setLoadingMessages(false);
+  };
+
+  // Send message as proxy user
+  const sendProxyMessage = async () => {
+    if (!proxyUser || !proxyChatFriendId || !proxyNewMessage.trim()) return;
+
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: proxyUser.id,
+        receiver_id: proxyChatFriendId,
+        content: proxyNewMessage.trim(),
+      });
+
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo enviar el mensaje', variant: 'destructive' });
+    } else {
+      setProxyNewMessage('');
+      fetchProxyMessages(proxyUser.id, proxyChatFriendId);
+    }
+  };
+
+  // Delete challenge
+  const deleteChallenge = async (id: string) => {
+    const { error } = await supabase
+      .from('challenges')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
+    } else {
+      toast({ title: 'Desafío eliminado' });
+      fetchChallenges();
+    }
+  };
+
   useEffect(() => {
     if (isAdmin) {
       fetchFriendships();
+      fetchChallenges();
     }
   }, [isAdmin]);
 
@@ -311,6 +431,7 @@ export const Admin: React.FC = () => {
             onClick={() => {
               refresh();
               fetchFriendships();
+              fetchChallenges();
             }}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -351,18 +472,22 @@ export const Admin: React.FC = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="users">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users">
-              <Users className="h-4 w-4 mr-2" />
+              <Users className="h-4 w-4 mr-1" />
               Usuarios
             </TabsTrigger>
             <TabsTrigger value="goals">
-              <Target className="h-4 w-4 mr-2" />
+              <Target className="h-4 w-4 mr-1" />
               Metas
             </TabsTrigger>
             <TabsTrigger value="friendships">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Solicitudes
+              <UserPlus className="h-4 w-4 mr-1" />
+              Social
+            </TabsTrigger>
+            <TabsTrigger value="challenges">
+              <Swords className="h-4 w-4 mr-1" />
+              Desafíos
             </TabsTrigger>
           </TabsList>
 
@@ -633,6 +758,66 @@ export const Admin: React.FC = () => {
               )}
             </div>
           </TabsContent>
+
+          {/* Challenges Tab */}
+          <TabsContent value="challenges" className="mt-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Swords className="h-4 w-4 text-orange-500" />
+                Todos los Desafíos ({challenges.length})
+              </h3>
+            </div>
+            
+            {challenges.length === 0 ? (
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  No hay desafíos creados
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {challenges.map((challenge) => (
+                  <Card key={challenge.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">{challenge.title}</span>
+                            <Badge 
+                              variant={challenge.status === 'active' ? 'default' : 'secondary'}
+                              className={
+                                challenge.status === 'completed' ? 'bg-green-500' : 
+                                challenge.status === 'pending' ? 'bg-yellow-500' : ''
+                              }
+                            >
+                              {challenge.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {challenge.creator?.name} vs {challenge.opponent?.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Progreso: {challenge.creator_progress}/{challenge.target_value} vs {challenge.opponent_progress}/{challenge.target_value}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(challenge.created_at), 'dd MMM yyyy', { locale: es })}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => deleteChallenge(challenge.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -802,7 +987,14 @@ export const Admin: React.FC = () => {
       </Sheet>
 
       {/* Proxy User Sheet */}
-      <Sheet open={proxySheetOpen} onOpenChange={setProxySheetOpen}>
+      <Sheet open={proxySheetOpen} onOpenChange={(open) => {
+        setProxySheetOpen(open);
+        if (!open) {
+          setProxyChatFriendId(null);
+          setProxyMessages([]);
+          setProxyNewMessage('');
+        }
+      }}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
@@ -920,6 +1112,9 @@ export const Admin: React.FC = () => {
                         <div className="space-y-2">
                           <p className="text-xs text-green-600 font-medium">Amigos ({userFriends.length})</p>
                           {userFriends.map((f) => {
+                            const friendId = f.requester_id === proxyUser.id 
+                              ? f.addressee_id 
+                              : f.requester_id;
                             const friendName = f.requester_id === proxyUser.id 
                               ? f.addressee?.name 
                               : f.requester?.name;
@@ -927,10 +1122,23 @@ export const Admin: React.FC = () => {
                               <Card key={f.id}>
                                 <CardContent className="p-3 flex items-center justify-between">
                                   <span className="text-sm font-medium">{friendName}</span>
-                                  <Badge variant="secondary" className="bg-green-100 text-green-700">
-                                    <UserCheck className="h-3 w-3 mr-1" />
-                                    Amigos
-                                  </Badge>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8"
+                                      onClick={() => {
+                                        setProxyChatFriendId(friendId);
+                                        fetchProxyMessages(proxyUser.id, friendId);
+                                      }}
+                                    >
+                                      <MessageCircle className="h-4 w-4" />
+                                    </Button>
+                                    <Badge variant="secondary" className="bg-green-100 text-green-700">
+                                      <UserCheck className="h-3 w-3 mr-1" />
+                                      Amigos
+                                    </Badge>
+                                  </div>
                                 </CardContent>
                               </Card>
                             );
@@ -947,6 +1155,99 @@ export const Admin: React.FC = () => {
                   );
                 })()}
               </div>
+
+              {/* Proxy Chat Section */}
+              {proxyChatFriendId && (() => {
+                const friend = friendships.find(f => 
+                  (f.requester_id === proxyUser.id && f.addressee_id === proxyChatFriendId) ||
+                  (f.addressee_id === proxyUser.id && f.requester_id === proxyChatFriendId)
+                );
+                const friendName = friend 
+                  ? (friend.requester_id === proxyUser.id ? friend.addressee?.name : friend.requester?.name)
+                  : 'Usuario';
+
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4" />
+                        Chat con {friendName}
+                      </h4>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setProxyChatFriendId(null);
+                          setProxyMessages([]);
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    <Card>
+                      <CardContent className="p-3">
+                        <ScrollArea className="h-48 pr-2">
+                          <div className="space-y-2">
+                            {proxyMessages.map((msg) => {
+                              const isOwn = msg.sender_id === proxyUser.id;
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                                >
+                                  <div
+                                    className={`max-w-[80%] rounded-lg px-3 py-1.5 text-sm ${
+                                      isOwn
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted'
+                                    }`}
+                                  >
+                                    <p>{msg.content}</p>
+                                    <p className={`text-xs mt-0.5 ${
+                                      isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                    }`}>
+                                      {format(new Date(msg.created_at), 'HH:mm', { locale: es })}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {proxyMessages.length === 0 && !loadingMessages && (
+                              <p className="text-center text-muted-foreground text-sm py-4">
+                                No hay mensajes
+                              </p>
+                            )}
+                            {loadingMessages && (
+                              <p className="text-center text-muted-foreground text-sm py-4">
+                                Cargando...
+                              </p>
+                            )}
+                          </div>
+                        </ScrollArea>
+                        
+                        <div className="flex gap-2 mt-3 pt-3 border-t">
+                          <Textarea
+                            placeholder="Escribe un mensaje como este usuario..."
+                            value={proxyNewMessage}
+                            onChange={(e) => setProxyNewMessage(e.target.value)}
+                            className="min-h-[40px] h-10 resize-none"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                sendProxyMessage();
+                              }
+                            }}
+                          />
+                          <Button onClick={sendProxyMessage} disabled={!proxyNewMessage.trim()}>
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })()}
 
               <div className="space-y-3">
                 <h4 className="font-medium text-sm text-muted-foreground">Metas del Usuario</h4>

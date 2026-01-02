@@ -10,6 +10,13 @@ import { Friendship, FriendStreak, UserPoints } from '@/types/social';
 import { Users, UserPlus, MessageCircle, Flame, Check, X, Swords, Search, Mail, AtSign, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
+
+interface FriendProfile {
+  id: string;
+  name: string | null;
+  avatar_url: string | null;
+}
 
 interface FriendsSectionProps {
   friends: Friendship[];
@@ -42,6 +49,42 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
   const [searchResults, setSearchResults] = useState<{ id: string; name: string; email?: string; avatar_url?: string }[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchTab, setSearchTab] = useState<'search' | 'leaderboard'>('search');
+  const [friendProfiles, setFriendProfiles] = useState<Map<string, FriendProfile>>(new Map());
+
+  // Fetch friend profiles that are not in leaderboard
+  useEffect(() => {
+    const fetchMissingProfiles = async () => {
+      if (!user) return;
+      
+      // Get all friend IDs
+      const friendIds = friends.map(f => 
+        f.requester_id === user.id ? f.addressee_id : f.requester_id
+      );
+      
+      // Add pending request requester IDs
+      const pendingIds = pendingRequests.map(r => r.requester_id);
+      const allIds = [...new Set([...friendIds, ...pendingIds])];
+      
+      // Filter out IDs that are already in leaderboard
+      const leaderboardIds = new Set(leaderboard.map(l => l.user_id));
+      const missingIds = allIds.filter(id => !leaderboardIds.has(id));
+      
+      if (missingIds.length === 0) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url')
+        .in('id', missingIds);
+        
+      if (data) {
+        const newMap = new Map(friendProfiles);
+        data.forEach(p => newMap.set(p.id, p));
+        setFriendProfiles(newMap);
+      }
+    };
+    
+    fetchMissingProfiles();
+  }, [friends, pendingRequests, leaderboard, user]);
 
   // Debounced search
   useEffect(() => {
@@ -77,6 +120,15 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
     return leaderboard.find(p => p.user_id === friendId);
   };
 
+  // Get friend profile from leaderboard or fetched profiles
+  const getFriendProfile = (friendId: string) => {
+    const leaderboardEntry = getFriendFromLeaderboard(friendId);
+    if (leaderboardEntry?.profile) {
+      return leaderboardEntry.profile;
+    }
+    return friendProfiles.get(friendId) || null;
+  };
+
   // Filter leaderboard for potential friends (not already friends)
   const potentialFriends = leaderboard.filter(p => {
     if (p.user_id === user?.id) return false;
@@ -85,7 +137,6 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
     );
     return !isFriend;
   });
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -254,21 +305,21 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
                 Solicitudes pendientes
               </div>
               {pendingRequests.map((request) => {
-                const requesterPoints = getFriendFromLeaderboard(request.requester_id);
+                const requesterProfile = getFriendProfile(request.requester_id);
                 return (
                   <div
                     key={request.id}
                     className="flex items-center gap-3 p-2 bg-orange-500/10 rounded-lg border border-orange-500/20"
                   >
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src={requesterPoints?.profile?.avatar_url || undefined} />
+                      <AvatarImage src={requesterProfile?.avatar_url || undefined} />
                       <AvatarFallback>
-                        {(requesterPoints?.profile?.name || 'U')[0].toUpperCase()}
+                        {(requesterProfile?.name || 'U')[0].toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="text-sm font-medium">
-                        {requesterPoints?.profile?.name || 'Usuario'}
+                        {requesterProfile?.name || 'Usuario'}
                       </div>
                     </div>
                     <div className="flex gap-1">
@@ -307,6 +358,7 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
           <div className="space-y-2">
             {friends.map((friendship) => {
               const friendId = getFriendId(friendship);
+              const friendProfile = getFriendProfile(friendId);
               const friendPoints = getFriendFromLeaderboard(friendId);
               const streak = getFriendStreak(friendId);
 
@@ -318,14 +370,14 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src={friendPoints?.profile?.avatar_url || undefined} />
+                    <AvatarImage src={friendProfile?.avatar_url || undefined} />
                     <AvatarFallback>
-                      {(friendPoints?.profile?.name || 'U')[0].toUpperCase()}
+                      {(friendProfile?.name || 'U')[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">
-                      {friendPoints?.profile?.name || 'Usuario'}
+                      {friendProfile?.name || 'Usuario'}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{friendPoints?.total_points || 0} pts</span>
