@@ -80,9 +80,13 @@ export interface Streak {
 export interface Profile {
   id: string;
   name?: string;
+  email?: string;
   avatar_url?: string;
+  banner_url?: string;
+  bio?: string;
   timezone: string;
   notification_mode: 'soft' | 'normal' | 'intense';
+  tree_level?: number;
   created_at: string;
   updated_at: string;
 }

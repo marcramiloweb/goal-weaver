@@ -13,6 +13,7 @@ import Profile from "./pages/Profile";
 import Achievements from "./pages/Achievements";
 import League from "./pages/League";
 import Install from "./pages/Install";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/league" element={<League />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/install" element={<Install />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
