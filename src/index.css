@@ -52,6 +52,7 @@
     --category-carrera: 24 95% 53%;
     --category-creatividad: 280 70% 55%;
     --category-bienestar: 174 60% 45%;
+    --category-ejercicio: 200 85% 50%;
     --category-otro: 220 15% 50%;
 
     /* Gradients */
@@ -202,6 +203,10 @@
 
   .badge-bienestar {
     @apply bg-[hsl(var(--category-bienestar)/0.15)] text-[hsl(var(--category-bienestar))];
+  }
+
+  .badge-ejercicio {
+    @apply bg-[hsl(var(--category-ejercicio)/0.15)] text-[hsl(var(--category-ejercicio))];
   }
 
   .badge-otro {
