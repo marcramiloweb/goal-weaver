@@ -15,10 +15,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon, ChevronRight } from 'lucide-react';
+import { CalendarIcon, ChevronRight, ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { EmojiPicker } from '@/components/ui/emoji-picker';
 import { 
   GoalCategory, 
   GoalType, 
@@ -32,8 +33,6 @@ interface CreateGoalSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const GOAL_ICONS = ['🎯', '💪', '📚', '💰', '🏃', '🧘', '🎨', '💼', '❤️', '🌟', '🚀', '🏆'];
 
 export const CreateGoalSheet: React.FC<CreateGoalSheetProps> = ({
   open,
@@ -86,15 +85,24 @@ export const CreateGoalSheet: React.FC<CreateGoalSheetProps> = ({
       case 1:
         return (
           <div className="space-y-6 animate-fade-in">
-            <div>
-              <Label className="text-base font-medium">¿Cuál es tu meta?</Label>
-              <Input
-                placeholder="Ej: Leer 12 libros este año"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="mt-2 h-12 text-lg"
-                autoFocus
-              />
+            <div className="flex gap-3 items-start">
+              <div>
+                <Label className="text-base font-medium mb-2 block">Icono</Label>
+                <EmojiPicker 
+                  value={formData.icon} 
+                  onChange={(icon) => setFormData({ ...formData, icon })} 
+                />
+              </div>
+              <div className="flex-1">
+                <Label className="text-base font-medium">¿Cuál es tu meta?</Label>
+                <Input
+                  placeholder="Ej: Leer 12 libros este año"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="mt-2 h-12 text-lg"
+                  autoFocus
+                />
+              </div>
             </div>
 
             <div>
@@ -105,27 +113,6 @@ export const CreateGoalSheet: React.FC<CreateGoalSheetProps> = ({
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="mt-2 min-h-[100px]"
               />
-            </div>
-
-            <div>
-              <Label className="text-base font-medium">Elige un icono</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {GOAL_ICONS.map((icon) => (
-                  <button
-                    key={icon}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, icon })}
-                    className={cn(
-                      'w-12 h-12 text-2xl rounded-xl border-2 transition-all',
-                      formData.icon === icon
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50'
-                    )}
-                  >
-                    {icon}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         );

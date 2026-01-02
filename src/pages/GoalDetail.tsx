@@ -4,6 +4,7 @@ import { useGoals, useTasks, useCheckIns, useStreak } from '@/hooks/useGoals';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TaskItem } from '@/components/goals/TaskItem';
+import { EditGoalSheet } from '@/components/goals/EditGoalSheet';
 import { Confetti } from '@/components/ui/confetti';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,8 @@ import {
   Trash2,
   Star,
   Edit,
-  CalendarDays
+  CalendarDays,
+  Minus
 } from 'lucide-react';
 import { CATEGORY_CONFIG, GOAL_TYPE_CONFIG, Goal } from '@/types/goals';
 import { format, differenceInDays } from 'date-fns';
@@ -52,6 +54,7 @@ export const GoalDetail: React.FC = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditSheet, setShowEditSheet] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [checkInValue, setCheckInValue] = useState(1);
 
@@ -81,18 +84,21 @@ export const GoalDetail: React.FC = () => {
     ? differenceInDays(new Date(goal.target_date), new Date())
     : null;
 
-  const handleCheckIn = async () => {
-    const increment = goal.type === 'quantitative' ? checkInValue : 
-                      goal.type === 'habit' ? (100 / 30) : 
-                      (100 / 10);
+  const handleCheckIn = async (subtract: boolean = false) => {
+    const multiplier = subtract ? -1 : 1;
+    const increment = goal.type === 'quantitative' ? checkInValue * multiplier : 
+                      goal.type === 'habit' ? (100 / 30) * multiplier : 
+                      (100 / 10) * multiplier;
 
-    const newValue = Math.min(goal.current_value + increment, goal.target_value);
+    const newValue = Math.max(0, Math.min(goal.current_value + increment, goal.target_value));
     
     await updateGoal(goal.id, { current_value: newValue });
-    await createCheckIn(goal.id, increment);
-    await updateStreak();
+    if (!subtract) {
+      await createCheckIn(goal.id, Math.abs(increment));
+      await updateStreak();
+    }
 
-    if (newValue >= goal.target_value && goal.status !== 'completed') {
+    if (newValue >= goal.target_value && goal.status !== 'completed' && !subtract) {
       setShowConfetti(true);
       await updateGoal(goal.id, { status: 'completed' });
     }
@@ -148,6 +154,13 @@ export const GoalDetail: React.FC = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowEditSheet(true)}
+              >
+                <Edit className="h-5 w-5" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -221,26 +234,40 @@ export const GoalDetail: React.FC = () => {
             </div>
 
             {goal.status === 'active' && (
-              <div className="flex gap-2">
-                {goal.type === 'quantitative' && (
-                  <Input
-                    type="number"
-                    value={checkInValue}
-                    onChange={(e) => setCheckInValue(Number(e.target.value))}
-                    className="w-20"
-                    min={1}
-                  />
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  {goal.type === 'quantitative' && (
+                    <Input
+                      type="number"
+                      value={checkInValue}
+                      onChange={(e) => setCheckInValue(Number(e.target.value))}
+                      className="w-20"
+                      min={1}
+                    />
+                  )}
+                  <Button
+                    className="flex-1"
+                    onClick={() => handleCheckIn(false)}
+                    disabled={progress >= 100}
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    {goal.type === 'quantitative' 
+                      ? `Añadir ${checkInValue}` 
+                      : 'Check-in de hoy'}
+                  </Button>
+                </div>
+                {goal.current_value > 0 && (
+                  <Button
+                    variant="outline"
+                    className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => handleCheckIn(true)}
+                  >
+                    <Minus className="h-4 w-4 mr-2" />
+                    {goal.type === 'quantitative' 
+                      ? `Restar ${checkInValue}` 
+                      : 'Deshacer check-in'}
+                  </Button>
                 )}
-                <Button
-                  className="flex-1"
-                  onClick={handleCheckIn}
-                  disabled={progress >= 100}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  {goal.type === 'quantitative' 
-                    ? `Añadir ${checkInValue}` 
-                    : 'Check-in de hoy'}
-                </Button>
               </div>
             )}
 
@@ -369,6 +396,13 @@ export const GoalDetail: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Goal Sheet */}
+      <EditGoalSheet 
+        goal={goal} 
+        open={showEditSheet} 
+        onOpenChange={setShowEditSheet} 
+      />
     </AppLayout>
   );
 };
