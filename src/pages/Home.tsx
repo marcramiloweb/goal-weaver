@@ -37,12 +37,8 @@ export const Home: React.FC = () => {
   const [currentQuote, setCurrentQuote] = useState(getDailyQuote());
 
   const today = new Date();
-  const greeting = useMemo(() => {
-    const hour = today.getHours();
-    if (hour < 12) return 'Buenos días';
-    if (hour < 18) return 'Buenas tardes';
-    return 'Buenas noches';
-  }, [today]);
+  const hour = today.getHours();
+  const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
 
   // Initialize daily notifications on mount
   useEffect(() => {
