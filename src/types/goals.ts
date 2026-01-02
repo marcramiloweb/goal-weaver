@@ -6,6 +6,7 @@ export type GoalCategory =
   | 'carrera' 
   | 'creatividad' 
   | 'bienestar' 
+  | 'ejercicio'
   | 'otro';
 
 export type GoalType = 'checklist' | 'habit' | 'quantitative';
@@ -94,6 +95,7 @@ export const CATEGORY_CONFIG: Record<GoalCategory, { label: string; icon: string
   carrera: { label: 'Carrera', icon: '🚀', color: 'category-carrera' },
   creatividad: { label: 'Creatividad', icon: '🎨', color: 'category-creatividad' },
   bienestar: { label: 'Bienestar', icon: '🧘', color: 'category-bienestar' },
+  ejercicio: { label: 'Ejercicio', icon: '🏃', color: 'category-ejercicio' },
   otro: { label: 'Otro', icon: '✨', color: 'category-otro' },
 };
 
