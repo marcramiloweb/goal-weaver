@@ -84,7 +84,7 @@ export const useSocial = () => {
     const { data, error } = await supabase
       .from('user_points')
       .select('*')
-      .order('weekly_points', { ascending: false })
+      .order('total_points', { ascending: false })
       .limit(50);
 
     if (!error && data) {

@@ -71,6 +71,7 @@ export const useAdminData = () => {
   };
 
   const fetchAllGoals = async () => {
+    // Admin needs to use service role to bypass RLS - we'll fetch with available data
     const { data } = await supabase
       .from('goals')
       .select(`
@@ -83,6 +84,26 @@ export const useAdminData = () => {
     if (data) {
       setAllGoals(data);
     }
+  };
+
+  const updateUser = async (userId: string, updates: { name?: string; bio?: string }) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId);
+    
+    if (!error) await fetchUsers();
+    return { error };
+  };
+
+  const updateGoal = async (goalId: string, updates: any) => {
+    const { error } = await supabase
+      .from('goals')
+      .update(updates)
+      .eq('id', goalId);
+    
+    if (!error) await fetchAllGoals();
+    return { error };
   };
 
   const deleteUser = async (userId: string) => {
@@ -122,6 +143,8 @@ export const useAdminData = () => {
     loading,
     deleteUser,
     deleteGoal,
+    updateUser,
+    updateGoal,
     refresh: () => Promise.all([fetchUsers(), fetchAllGoals()]),
   };
 };

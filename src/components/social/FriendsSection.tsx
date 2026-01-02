@@ -210,7 +210,7 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
                           <div className="flex-1">
                             <div className="font-medium">{player.profile?.name || 'Usuario'}</div>
                             <div className="text-xs text-muted-foreground">
-                              {player.weekly_points} pts esta semana
+                              {player.total_points} pts totales
                             </div>
                           </div>
                           <Button
@@ -328,7 +328,7 @@ const FriendsSection: React.FC<FriendsSectionProps> = ({
                       {friendPoints?.profile?.name || 'Usuario'}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{friendPoints?.weekly_points || 0} pts</span>
+                      <span>{friendPoints?.total_points || 0} pts</span>
                       {streak && streak.current_streak > 0 && (
                         <Badge variant="secondary" className="text-xs">
                           <Flame className="w-3 h-3 mr-1 text-orange-500" />
