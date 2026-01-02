@@ -263,6 +263,7 @@ export type Database = {
         | "creatividad"
         | "bienestar"
         | "otro"
+        | "ejercicio"
       goal_priority: "low" | "medium" | "high"
       goal_status: "active" | "paused" | "completed" | "abandoned"
       goal_type: "checklist" | "habit" | "quantitative"
@@ -402,6 +403,7 @@ export const Constants = {
         "creatividad",
         "bienestar",
         "otro",
+        "ejercicio",
       ],
       goal_priority: ["low", "medium", "high"],
       goal_status: ["active", "paused", "completed", "abandoned"],
