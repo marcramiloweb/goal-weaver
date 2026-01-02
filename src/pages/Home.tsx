@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGoals, useTasks, useStreak, useCheckIns } from '@/hooks/useGoals';
@@ -16,8 +16,9 @@ import { Badge } from '@/components/ui/badge';
 import GrowingTree from '@/components/social/GrowingTree';
 import LeagueCard from '@/components/social/LeagueCard';
 import { AchievementCard } from '@/components/achievements/AchievementCard';
-import { Plus, Flame, Sparkles, ChevronRight, Trophy } from 'lucide-react';
-import { MOTIVATIONAL_QUOTES } from '@/types/goals';
+import { Plus, Flame, Sparkles, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
+import { getDailyQuote, MOTIVATIONAL_QUOTES } from '@/types/goals';
+import { initializeDailyNotifications, hasNotificationPermission } from '@/utils/notifications';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -33,6 +34,7 @@ export const Home: React.FC = () => {
 
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [currentQuote, setCurrentQuote] = useState(getDailyQuote());
 
   const today = new Date();
   const greeting = useMemo(() => {
@@ -42,10 +44,22 @@ export const Home: React.FC = () => {
     return 'Buenas noches';
   }, [today]);
 
-  const dailyQuote = useMemo(() => {
-    const dayIndex = today.getDate() % MOTIVATIONAL_QUOTES.length;
-    return MOTIVATIONAL_QUOTES[dayIndex];
-  }, [today]);
+  // Initialize daily notifications on mount
+  useEffect(() => {
+    if (hasNotificationPermission()) {
+      initializeDailyNotifications();
+    }
+  }, []);
+
+  // Get a new random quote (different from current)
+  const refreshQuote = () => {
+    let newQuote = currentQuote;
+    while (newQuote === currentQuote && MOTIVATIONAL_QUOTES.length > 1) {
+      const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length);
+      newQuote = MOTIVATIONAL_QUOTES[randomIndex];
+    }
+    setCurrentQuote(newQuote);
+  };
 
   const overallProgress = useMemo(() => {
     if (activeGoals.length === 0) return 0;
@@ -125,7 +139,14 @@ export const Home: React.FC = () => {
         {/* Motivational Quote */}
         <div className="card-glass p-4 flex items-center gap-3">
           <Sparkles className="h-5 w-5 text-accent flex-shrink-0" />
-          <p className="text-sm text-foreground/80 italic">{dailyQuote}</p>
+          <p className="text-sm text-foreground/80 italic flex-1">{currentQuote}</p>
+          <button 
+            onClick={refreshQuote}
+            className="p-1.5 hover:bg-muted/50 rounded-full transition-colors"
+            title="Nueva frase"
+          >
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          </button>
         </div>
 
         {/* Growing Tree Section */}
